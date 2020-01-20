@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>上手NAS | SHINCHVEN</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="移动硬盘我大概有5、6个，容量加起来超过10TB。由于有两台电脑（一台坐着用、一台躺着用~），所以经常要插拔。我不是很喜欢Windows 的文件夹共享功能，尤其是Windows 10以后，时好时坏用着有脾气。   路由器是网件WNDR4300，买的时候听说功能很强大，路由器功能还行，但USB读写速度慢得感人，就不想用它挂硬盘共享文件了。也刷过OpenWRT，觉得路由器的配置总之还是低，玩起来没劲儿">
+<meta property="og:type" content="article">
+<meta property="og:title" content="上手NAS">
+<meta property="og:url" content="https://atlassc.net/2018/03/17/new-to-use-nas/index.html">
+<meta property="og:site_name" content="SHINCHVEN">
+<meta property="og:description" content="移动硬盘我大概有5、6个，容量加起来超过10TB。由于有两台电脑（一台坐着用、一台躺着用~），所以经常要插拔。我不是很喜欢Windows 的文件夹共享功能，尤其是Windows 10以后，时好时坏用着有脾气。   路由器是网件WNDR4300，买的时候听说功能很强大，路由器功能还行，但USB读写速度慢得感人，就不想用它挂硬盘共享文件了。也刷过OpenWRT，觉得路由器的配置总之还是低，玩起来没劲儿">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2018-09-16T09:31:00.319Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="上手NAS">
+<meta name="twitter:description" content="移动硬盘我大概有5、6个，容量加起来超过10TB。由于有两台电脑（一台坐着用、一台躺着用~），所以经常要插拔。我不是很喜欢Windows 的文件夹共享功能，尤其是Windows 10以后，时好时坏用着有脾气。   路由器是网件WNDR4300，买的时候听说功能很强大，路由器功能还行，但USB读写速度慢得感人，就不想用它挂硬盘共享文件了。也刷过OpenWRT，觉得路由器的配置总之还是低，玩起来没劲儿">
+  
+    <link rel="alternate" href="/atom.xml" title="SHINCHVEN" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">SHINCHVEN</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">WANT TO ACCOMPLISH WONDERS.</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+           
+           
+            <a id="nav-twitter-link" class="nav-icon" target="_blank" href="https://twitter.com/ShinChven"  title="Twitter"></a>
+          
+           
+            <a id="nav-instagram-link" class="nav-icon" target="_blank" href="https://www.instagram.com/shinchven"  title="Instagram"></a>
+          
+           
+            <a id="nav-github-link" class="nav-icon" target="_blank" href="https://github.com/ShinChven"  title="GitHub"></a>
+          
+           
+            <a id="nav-google-plus-link" class="nav-icon" target="_blank" href="https://plus.google.com/+ShinChvenZhang"  title="Google+"></a>
+          
+        
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://atlassc.net"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-new-to-use-nas" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/03/17/new-to-use-nas/" class="article-date">
+  <time datetime="2018-03-16T17:17:26.000Z" itemprop="datePublished">2018-03-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      上手NAS
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <!-- Table of Contents -->
+
+    
+
+
+
+        <p>移动硬盘我大概有5、6个，容量加起来超过10TB。由于有两台电脑（一台坐着用、一台躺着用~），所以经常要插拔。我不是很喜欢Windows 的文件夹共享功能，尤其是Windows 10以后，时好时坏用着有脾气。</p>
+<p>
+
+</p><p>路由器是<a href="http://www.netgear.com.cn/home/products/networking/wifi-routers/wndr4300.aspx" target="_blank" rel="noopener">网件WNDR4300</a>，买的时候听说功能很强大，路由器功能还行，但USB读写速度慢得感人，就不想用它挂硬盘共享文件了。也刷过OpenWRT，觉得路由器的配置总之还是低，玩起来没劲儿。</p>
+<p>
+
+</p><p>看了<a href="https://www.youtube.com/watch?v=quouML5-UZI" target="_blank" rel="noopener">iJustine的视频</a>受到启发，决定添置一台NAS。</p>
+<h2 id="群晖DS718"><a href="#群晖DS718" class="headerlink" title="群晖DS718+"></a>群晖DS718+</h2><p>于是年前买了台<a href="https://www.synology.cn/zh-cn/products/DS718+" target="_blank" rel="noopener">群晖DS718+</a>，买之前听朋友提到“群晖”这个牌子，感觉像是个国产华强北的厂商。之前我对NAS界基本上是一无所知的，后来了解了才知道是非常有实力的台湾品牌。</p>
+<p>
+
+</p><p>目前装了1块6年前买的2TB西数绿盘，挂了3块移动硬盘在用，现在我的两台平板电脑和两台PC都能很方便的从群晖上访问共享文件，用得挺开心的。之后蹲京东硬盘打折，准备看情况是入12TB还是24TB，目前没有组可备份<a href="https://www.synology.com/zh-cn/knowledgebase/DSM/help/DSM/StorageManager/volume_diskgroup_what_is_raid" target="_blank" rel="noopener">RAID</a>的计划。</p>
+<h3 id="设备基本概况"><a href="#设备基本概况" class="headerlink" title="设备基本概况"></a>设备基本概况</h3><ul>
+<li>2个盘位，最大支持24TB；</li>
+<li>赛扬处理器；</li>
+<li>2G内存，可扩展至6G；</li>
+<li>运行基于Linux的<a href="https://www.synology.cn/zh-cn/dsm" target="_blank" rel="noopener">DSM操作系统</a>(<a href="https://www.synology.cn/zh-cn/dsm/live_demo" target="_blank" rel="noopener">Live Demo</a>)：<ul>
+<li>浏览器登陆访问，提供免费的动态域名解析，外网访问方便；</li>
+<li>有非常丰富<a href="https://www.synology.cn/zh-cn/dsm/packages" target="_blank" rel="noopener">Package</a>可安装，但迅雷远程下载已废，我猜是迅雷不想再为别人的设备做嫁衣了；</li>
+<li>可以玩Docker！</li>
+</ul>
+</li>
+</ul>
+<h3 id="下载工具"><a href="#下载工具" class="headerlink" title="下载工具"></a>下载工具</h3><h4 id="Download-Station"><a href="#Download-Station" class="headerlink" title="Download Station"></a>Download Station</h4><p>上面提到群晖已经与迅雷决裂了，于是群晖自己推出了替代迅雷的下载工具<a href="https://www.synology.com/zh-cn/knowledgebase/DSM/help/DownloadStation/DownloadStation_desc" target="_blank" rel="noopener">Download Stations</a>，下载功能还算齐全，BT种子、磁力链接、电驴、http/ftp等各种链接都吃。使用下来觉得下载热门资源基本是够用的，但是<strong>没有迅雷会员高速通道</strong>是硬伤，下载一些老资源或者冷门资源的时候，要纯靠P2P还真是随缘。</p>
+<p>
+
+</p><p>在公司通过群晖DSM的External Access向DownloadStation添加下载任务，回家的时候缘分好的话就应该下载好了，真是惬意。</p>
+<h4 id="迅雷的替代方案"><a href="#迅雷的替代方案" class="headerlink" title="迅雷的替代方案"></a>迅雷的替代方案</h4><p>无法使用迅雷的时候想过一些替代方案：</p>
+<ul>
+<li><a href="https://github.com/yinheli/docker-thunder-xware" target="_blank" rel="noopener">使用docker运行xware</a>：结果发现迅雷把这条路也堵死了，现在xware也不再支持会员加速通道，最多只能当作远程下载功能添加任务下载，而且只能有3个active的下载任务。今年这个会员真是充得有气。</li>
+<li>百度网盘同步：群晖的网盘同步功能可以接入百度网盘，有些资源的缘分还能用度盘争取一下。</li>
+<li>PC迅雷下载直接写入群晖共享文件夹，但是还需要再开一台电脑，不够环保。</li>
+</ul>
+<h4 id="网盘同步"><a href="#网盘同步" class="headerlink" title="网盘同步"></a>网盘同步</h4><p>群晖可扩展的功能非常多，我还远远没把它们充分地运用起来，网盘同步也是其中一个很好用的功能。群晖的网盘同步功能可接入很多的网盘服务，除了国产度盘、企鹅盘以外，还有各种国外的主流网盘，总共20多种。</p>
+<p>
+
+</p><p>平时使用OneDrive比较多，我已经把我的OneDrive文件全部同步到了群晖，在PC上释放不常用的副本文件空间。</p>
+<h3 id="文件共享"><a href="#文件共享" class="headerlink" title="文件共享"></a>文件共享</h3><p>我添置NAS的主要目的有两个：</p>
+<ul>
+<li>低功耗24小时待机下载，虽然不知道群晖的功耗会不会真的很低，但电费增加是肯定的了，毕竟多了一台长待机的设备；</li>
+<li>网络文件共享；</li>
+</ul>
+<p>我把媒体文件夹和接在群晖上的移动硬盘都共享出来了，完美解决了之前用移动硬盘插来插去的麻烦。</p>
+<p>
+
+</p><p>群晖网线直插路由器，所以从其他设备访问群晖的共享文件夹的时候，速度是很快的，蓝光原盘可以流畅播放，这个让我很感动！</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://atlassc.net/2018/03/17/new-to-use-nas/" data-id="cjmd4lycw00044hlel6rgr6pc" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/09/16/new-to-hexo/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          用hexo重新搭建了博客
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/03/15/powerdvd-and-bluray-region-code/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">PowerDVD 17 Ultra和蓝光区码</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/05/">May 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2010/10/">October 2010</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2000/01/">January 2000</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2018/09/22/quick-proxy-in-bash/">Quick proxy in bash</a>
+          </li>
+        
+          <li>
+            <a href="/2018/09/22/quick-proxy-in-terminal/">命令行翻篱笆</a>
+          </li>
+        
+          <li>
+            <a href="/2018/09/16/new-to-hexo/">用hexo重新搭建了博客</a>
+          </li>
+        
+          <li>
+            <a href="/2018/03/17/new-to-use-nas/">上手NAS</a>
+          </li>
+        
+          <li>
+            <a href="/2018/03/15/powerdvd-and-bluray-region-code/">PowerDVD 17 Ultra和蓝光区码</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2018 SHINCHVEN<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+  
+    
+      
+      <a href="https://twitter.com/ShinChven" target="_blank" class="mobile-nav-link">Twitter</a>
+      
+      
+      <a href="https://www.instagram.com/shinchven" target="_blank" class="mobile-nav-link">Instagram</a>
+      
+      
+      <a href="https://github.com/ShinChven" target="_blank" class="mobile-nav-link">GitHub</a>
+      
+      
+      <a href="https://plus.google.com/+ShinChvenZhang" target="_blank" class="mobile-nav-link">Google+</a>
+      
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

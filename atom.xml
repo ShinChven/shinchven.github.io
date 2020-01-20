@@ -1,0 +1,809 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>SHINCHVEN</title>
+  
+  <subtitle>WANT TO ACCOMPLISH WONDERS.</subtitle>
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="https://atlassc.net/"/>
+  <updated>2020-01-20T08:39:29.840Z</updated>
+  <id>https://atlassc.net/</id>
+  
+  <author>
+    <name>SHINCHVEN</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>How I automated android packaging</title>
+    <link href="https://atlassc.net/2020/01/08/how-I-automated-android-packaging/"/>
+    <id>https://atlassc.net/2020/01/08/how-I-automated-android-packaging/</id>
+    <published>2020-01-08T15:39:00.000Z</published>
+    <updated>2020-01-20T08:39:29.840Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Why-not-get-automated-in-generating-an-apk"><a href="#Why-not-get-automated-in-generating-an-apk" class="headerlink" title="Why not get automated in generating an apk?"></a>Why not get automated in generating an apk?</h2><p>Though the official guide tells us how to generate our builds by clicking one and another menu options in Android Studio, but we don’t always have to generate every release artifact manually, nowadays we can automate almost every kind of software artifact with docker.</p><p>A signed release apk or aab file can be easily generated from Linux commandline if you have configured your signing and packaging options in your build.gradle file. And there is no difference in doing it in a docker pipeline.</p><p>I’ve already automated my packaging procedure in two steps:</p><h2 id="1-Prepare-a-docker-image-that-installed-all-the-env-we-need-to-build-an-android-artifact"><a href="#1-Prepare-a-docker-image-that-installed-all-the-env-we-need-to-build-an-android-artifact" class="headerlink" title="1. Prepare a docker image that installed all the env we need to build an android artifact."></a>1. Prepare a docker image that installed all the env we need to build an android artifact.</h2><figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># I prefer an enrironment based on ubuntu.</span></span><br><span class="line"><span class="keyword">FROM</span> ubuntu:bionic</span><br><span class="line"></span><br><span class="line"><span class="keyword">MAINTAINER</span> shinchven@gmail.com</span><br><span class="line"></span><br><span class="line"><span class="comment">## Install openjdk and other tools that might be needed.</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt-get update &amp;&amp; apt-get upgrade -y &amp;&amp; apt-get install git openjdk-8-jdk curl unzip -y</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Configure your target Android VERSIONS</span></span><br><span class="line"><span class="keyword">ENV</span> SDK_URL=<span class="string">"https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip"</span> \</span><br><span class="line">    ANDROID_HOME=<span class="string">"/usr/local/android-sdk"</span> \</span><br><span class="line">    ANDROID_VERSION=<span class="number">29</span> \</span><br><span class="line">    ANDROID_BUILD_TOOLS_VERSION=<span class="number">29.0</span>.<span class="number">2</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Download and install Android SDK</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> mkdir <span class="string">"<span class="variable">$ANDROID_HOME</span>"</span> .android \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">cd</span> <span class="string">"<span class="variable">$ANDROID_HOME</span>"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -o sdk.zip <span class="variable">$SDK_URL</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; unzip sdk.zip \</span></span><br><span class="line"><span class="bash">    &amp;&amp; rm sdk.zip \</span></span><br><span class="line"><span class="bash">    &amp;&amp; yes | <span class="variable">$ANDROID_HOME</span>/tools/bin/sdkmanager --licenses \</span></span><br><span class="line"><span class="bash"></span></span><br><span class="line"><span class="bash"><span class="comment"># Install Android Build Tool and Libraries</span></span></span><br><span class="line">&amp;&amp; $ANDROID_HOME/tools/bin/sdkmanager --update \</span><br><span class="line">&amp;&amp; $ANDROID_HOME/tools/bin/sdkmanager <span class="string">"build-tools;$&#123;ANDROID_BUILD_TOOLS_VERSION&#125;"</span> \</span><br><span class="line">    <span class="string">"platforms;android-$&#123;ANDROID_VERSION&#125;"</span> \</span><br><span class="line">    <span class="string">"platform-tools"</span> \</span><br><span class="line">    <span class="string">"ndk-bundle"</span> \</span><br><span class="line">&amp;&amp; mkdir /application</span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /application</span></span><br></pre></td></tr></table></figure><h2 id="2-Configure-pipeline-on-Gitlab-so-that-whenever-I-push-code-to-the-repo-the-automation-jobs-get-triggered"><a href="#2-Configure-pipeline-on-Gitlab-so-that-whenever-I-push-code-to-the-repo-the-automation-jobs-get-triggered" class="headerlink" title="2. Configure pipeline on Gitlab so that whenever I push code to the repo, the automation jobs get triggered"></a>2. Configure pipeline on Gitlab so that whenever I push code to the repo, the automation jobs get triggered</h2><figure class="highlight yml"><figcaption><span>.gitlab-ci.yml</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">image:</span> <span class="string">shinchven/android-build:29</span> <span class="comment"># Use the building env image we have prepared at step 1.</span></span><br><span class="line"></span><br><span class="line"><span class="attr">autobuild:</span></span><br><span class="line"><span class="attr">  only:</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">master</span></span><br><span class="line"><span class="attr">  artifacts:</span> <span class="comment"># One the pipeline job is done, artifact will be archieved to GitLab.</span></span><br><span class="line"><span class="attr">    expire_in:</span> <span class="number">1</span> <span class="string">month</span> <span class="comment"># And it will cleaned if you setup an expiration time.</span></span><br><span class="line"><span class="attr">    paths:</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">/Path/To/Your/Apk/Or/Aab</span></span><br><span class="line"><span class="attr">  script:</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">chmod</span> <span class="string">+x</span> <span class="string">./gradlew</span> <span class="comment"># the gradle script file might need execution permission.</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">./gradlew</span> <span class="string">lint</span> <span class="comment"># check your code style</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">./gradlew</span> <span class="string">bundle</span> <span class="comment"># generate artifact</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">./gradlew</span> <span class="string">build</span></span><br></pre></td></tr></table></figure><p>Thanks to the automation, now I only need to focus on my coding. When I am done with coding, I just push my code to my private repo and leave all the testing and packaging jobs to the CI server. After a cup of coffee, the artifact is there for me to grab.</p><h2 id="And-one-other-advantage-of-automation"><a href="#And-one-other-advantage-of-automation" class="headerlink" title="And one other advantage of automation"></a>And one other advantage of automation</h2><p>Is that if you lint, test and build your release apk/aab every time you commit your code, your face won’t be punched by any lint and proguard errors when you need to generate a new release in a hurry.</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;Why-not-get-automated-in-generating-an-apk&quot;&gt;&lt;a href=&quot;#Why-not-get-automated-in-generating-an-apk&quot; class=&quot;headerlink&quot; title=&quot;Why not 
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Android" scheme="https://atlassc.net/tags/Android/"/>
+    
+      <category term="GitLab" scheme="https://atlassc.net/tags/GitLab/"/>
+    
+      <category term="docker" scheme="https://atlassc.net/tags/docker/"/>
+    
+      <category term="generate artifact" scheme="https://atlassc.net/tags/generate-artifact/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>阿里云的Maven镜像</title>
+    <link href="https://atlassc.net/2020/01/05/aliyun-maven-mirror/"/>
+    <id>https://atlassc.net/2020/01/05/aliyun-maven-mirror/</id>
+    <published>2020-01-05T12:11:58.000Z</published>
+    <updated>2020-01-05T12:49:27.618Z</updated>
+    
+    <content type="html"><![CDATA[<p>在天朝开发Java怎么少得了使用<a href="https://maven.aliyun.com/mvn/view" target="_blank" rel="noopener">阿里云的Maven镜像</a>呢？</p><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">buildscript &#123;</span><br><span class="line">    repositories &#123;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/apache-snapshots'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/central'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/google'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/gradle-plugin'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/jcenter'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/spring'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/spring-plugin'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/public'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/releases'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/snapshots'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/grails-core'</span>&#125;</span><br><span class="line">        maven&#123; url <span class="string">'https://maven.aliyun.com/repository/mapr-public'</span>&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;在天朝开发Java怎么少得了使用&lt;a href=&quot;https://maven.aliyun.com/mvn/view&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;阿里云的Maven镜像&lt;/a&gt;呢？&lt;/p&gt;
+&lt;figure class=&quot;highlight
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Aliyun" scheme="https://atlassc.net/tags/Aliyun/"/>
+    
+      <category term="Maven mirror" scheme="https://atlassc.net/tags/Maven-mirror/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>PUPPETEER_DOWNLOAD_HOST</title>
+    <link href="https://atlassc.net/2020/01/01/puppeteer-download-host/"/>
+    <id>https://atlassc.net/2020/01/01/puppeteer-download-host/</id>
+    <published>2020-01-01T09:13:23.000Z</published>
+    <updated>2020-01-01T09:26:45.381Z</updated>
+    
+    <content type="html"><![CDATA[<p><a href="https://developers.google.com/web/tools/puppeteer" target="_blank" rel="noopener">puppeteer</a> 是一个 NodeJS 的 Chrome headless API，安装的时候会 bundle 一个Chromium。如果你很不幸身在大中华局域网内，可能无法顺利下载Chromium。</p><p>所幸官方提供了环境变量配置，可以设置一个镜像地址来下载Chromium。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PUPPETEER_DOWNLOAD_HOST=https://storage.googleapis.com.cnpmjs.org</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;a href=&quot;https://developers.google.com/web/tools/puppeteer&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;puppeteer&lt;/a&gt; 是一个 NodeJS 的 Chrome headless API
+      
+    
+    </summary>
+    
+    
+    
+      <category term="puppeteer" scheme="https://atlassc.net/tags/puppeteer/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>AirPods Pro is mostly working fine with Androids</title>
+    <link href="https://atlassc.net/2019/12/02/airpods-pro-is-mostly-working-fine-with-androids/"/>
+    <id>https://atlassc.net/2019/12/02/airpods-pro-is-mostly-working-fine-with-androids/</id>
+    <published>2019-12-02T11:40:30.000Z</published>
+    <updated>2020-01-01T08:49:43.591Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="What-is-working-and-what-is-not"><a href="#What-is-working-and-what-is-not" class="headerlink" title="What is working and what is not"></a>What is working and what is not</h2><h3 id="Tl-Dr"><a href="#Tl-Dr" class="headerlink" title="Tl;Dr"></a>Tl;Dr</h3><p>Most functions are working when you use a pair of AirPods Pro with Android, but you still need an iOS device to configure them.</p><h3 id="Details"><a href="#Details" class="headerlink" title="Details"></a>Details</h3><table><thead><tr><th>function</th><th>working?</th></tr></thead><tbody><tr><td>Pairing is working.</td><td>✔️</td></tr><tr><td>Open case to connect is working.</td><td>✔️</td></tr><tr><td>Press stick to pause, resume and answer phone call is working.</td><td>✔️</td></tr><tr><td>Sound quality basically the same as you use it with iOS device.</td><td>✔️</td></tr><tr><td>Reading battery life is working with some 3rd party app. Apple should bundle it with Apple music app, that would be one significant reason for me to install the app.</td><td>✔️</td></tr><tr><td>Switching noise cancelling mode by long pressing on pods’ stick is partially working, you need an iOS device to enable the <code>disable noise cancelling</code> option, otherwise you can only switch between <code>Active Noise Cancellation</code> and <code>transparent mode</code>.</td><td>ℹ️</td></tr><tr><td>Noise cancelling mode switching on Android is not working. Same reason with battery issue.</td><td>❌</td></tr></tbody></table><h2 id="Is-sound-quality-good"><a href="#Is-sound-quality-good" class="headerlink" title="Is sound quality good?"></a>Is sound quality good?</h2><p>Good, but no better than any SONY earphones I owned. If you are looking for HiRes sound quality, never look to Apple.</p><h2 id="Connectivity"><a href="#Connectivity" class="headerlink" title="Connectivity"></a>Connectivity</h2><p>The AirPods Pro’s bluetooth connection is working fine with both my Pixel phone, my Alienware desktop, my MacBook Pro and my iPad in most time, but still I encountered a few moments when connection is dropped off.</p><h2 id="Battery-life"><a href="#Battery-life" class="headerlink" title="Battery life"></a>Battery life</h2><p>Charging is fast with the battery case, and the case isn’t charge so fast as I want it to be. The pods didn’t even come with a charger.</p><h2 id="Will-it-dropped-off"><a href="#Will-it-dropped-off" class="headerlink" title="Will it dropped off?"></a>Will it dropped off?</h2><p>No, it won’t. Even when I’m shaking my head.</p><h2 id="How-is-noise-cancelling-working"><a href="#How-is-noise-cancelling-working" class="headerlink" title="How is noise cancelling working?"></a>How is noise cancelling working?</h2><p>The promotion video is telling no lie that when I turn on the <code>Active Noise Cancellation</code> mode I feel that I am separated from the environment and like a characters is expressing his/her inside voices in a drama or film.</p><p>But the <code>Active Noise Cancellation</code> isn’t cancelling everything I hear in the environment around me: I can still sense people’s talking but I won’t hear what their are talking about, and I can still feel cars’ passing by on the road but the noise is decreased to some lower level that won’t bother me anymore. Maybe AirPods Pro’s maximum power is limited by its size, or maybe Apple think it is essential to present a noise cancelling product that its user can still sense his or her surroundings for safety reason. </p><p>Apple never delivered a product with complexity, the best way for most users is just a on or off.</p><p>So let’s talk about the <code>off mode</code> which is not actually off and officially named <code>Transparent mode</code>. In transparent mode, user can hear his or her surroundings very clearly because in this mode the AirPods Pro is amplifying user’s surrounding sound and merge it seamlessly with what the user is listening on device. So when I need to talk to someone while wearing AirPods Pro, I don’t have talk them off, I just switch the pods to transparent mode and have my conversation. This is not an Apple’s creation, other noise cancelling product does it too.</p><h2 id="Why-did-I-buy-it"><a href="#Why-did-I-buy-it" class="headerlink" title="Why did I buy it?"></a>Why did I buy it?</h2><p>The ultimate reason I buy it is its figure, so tiny and so compact that I can’t feel any uncomfortable, sometimes I can’t even feel that I am wearing it (mostly on transparent mode).</p><p>I’ve been a long-time fan to SONY’s earphones hitherto, admiring their good quality of sound, and I have compared it with the WF-1000XM3 carefully before choosing which to buy: both are doing well at noise cancelling and sony is undoubtedly superb at sound quality. But I have clear mind that I am looking for a real comfortable pair of earphones which is a truly wireless one this time, so WF-1000XM3 didn’t workout for me, for I can’t stand it’s size and shape, comparing to how beautiful a pair earphone Apple has sculptured. </p><p>Lots of people criticized the figure of the original AirPods when it was launched, but not after long, Apple is leading the fashion yet again, and almost every 3C manufacturer is copying Apple these days.I just can’t set loose of the temptation of supreme combination of technology and design, Even though I had my issues with some sick iPhone owners, and I have swore to never buy a phone chatting using blue bubble.</p><p>And yes, I bought the AirPods Pro out of the pride and prejudice. People around me still paying the installment for their iPhone won’t recognize what brand my beloved Pixel phone is, but when I am wearing AirPods Pro, I’d probably be looked up to as an Apple’s Pro user. </p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;What-is-working-and-what-is-not&quot;&gt;&lt;a href=&quot;#What-is-working-and-what-is-not&quot; class=&quot;headerlink&quot; title=&quot;What is working and what is no
+      
+    
+    </summary>
+    
+    
+    
+      <category term="AirPods Pro" scheme="https://atlassc.net/tags/AirPods-Pro/"/>
+    
+      <category term="Apple accessory" scheme="https://atlassc.net/tags/Apple-accessory/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Take All Persistable Uri Permissions At A Time If You Want Them To Last Over Reboot</title>
+    <link href="https://atlassc.net/2019/11/25/take-all-persistable-uri-permissions-at-a-time-if-you-want-them-to-last-over-reboot/"/>
+    <id>https://atlassc.net/2019/11/25/take-all-persistable-uri-permissions-at-a-time-if-you-want-them-to-last-over-reboot/</id>
+    <published>2019-11-25T12:36:23.000Z</published>
+    <updated>2019-12-02T15:02:11.913Z</updated>
+    
+    <content type="html"><![CDATA[<p>If I don’t get it wrong, declaring for the <code>android.permission.WRITE_EXTERNAL_STORAGE</code> permission is bundled with <code>android.permission.READ_EXTERNAL_STORAGE</code>, so in old ways if I am a lazy guy, I just don’t have to write the permission declaration for the later one.</p><p>But time has changed when Google’s new policy is asking developers to use Storage Access Framework, when taking the persistable uri permissions, you must take reading and writing permission both at one. Other wise you won’t be able to read or write after reboot. To do so you can use the following kotlin codes:</p><figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">StoragePermissionFragment</span> : <span class="type">Fragment</span></span>()&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">onActivityResult</span><span class="params">(requestCode: <span class="type">Int</span>, resultCode: <span class="type">Int</span>, <span class="keyword">data</span>: <span class="type">Intent</span>?)</span></span> &#123;</span><br><span class="line">        <span class="keyword">super</span>.onActivityResult(requestCode, resultCode, <span class="keyword">data</span>)</span><br><span class="line">        <span class="keyword">if</span> (requestCode == OPEN_DIRECTORY_REQUEST_CODE) &#123;</span><br><span class="line">            <span class="keyword">if</span> (resultCode == Activity.RESULT_OK) &#123;</span><br><span class="line">                <span class="keyword">val</span> directoryUri = <span class="keyword">data</span>?.<span class="keyword">data</span> ?: <span class="keyword">return</span></span><br><span class="line">                activity?.contentResolver?.takePersistableUriPermission(</span><br><span class="line">                    directoryUri,</span><br><span class="line">                    <span class="comment">// take both permissions at a time by combining flags with `or` operator</span></span><br><span class="line">                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION</span><br><span class="line">                    or Intent.FLAG_GRANT_READ_URI_PERMISSION</span><br><span class="line">                )</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (resultCode == Activity.RESULT_CANCELED) &#123;</span><br><span class="line">                <span class="comment">// handle canceled</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;If I don’t get it wrong, declaring for the &lt;code&gt;android.permission.WRITE_EXTERNAL_STORAGE&lt;/code&gt; permission is bundled with &lt;code&gt;androi
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Android Storage Access Framework" scheme="https://atlassc.net/tags/Android-Storage-Access-Framework/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Better Screenshot Tools</title>
+    <link href="https://atlassc.net/2019/11/08/better-screenshot-tool/"/>
+    <id>https://atlassc.net/2019/11/08/better-screenshot-tool/</id>
+    <published>2019-11-08T15:14:53.000Z</published>
+    <updated>2019-11-15T16:29:17.389Z</updated>
+    
+    <content type="html"><![CDATA[<p><img src="https://raw.githubusercontent.com/ZekeDa/XnipWebsite/master/images/annotation_screeshot_gif.gif" alt="image"></p><p>Taking screenshots and making marks on them to explain the situations on your screen are quite essential and common skills in online chat.</p><p>macOS and Windows have their own built in screenshots tools, but none of them is better than the screenshot tool built in IMs like WeChat. There is no doubt that a chat software understands user’s communicating requirements better.</p><p>I used to use QQ a lot, but time has changed, WeChat has superseded it now. However the QRCode login sequence of WeChat Desktop is stupid and inconvenient, that makes me just don’t wanna use WeChat on desktop. So I seek some other standalone 3rd party screenshot tool, so that I don’t have to rely on the stupid WeChat to take screenshot any more.</p><p>And not through a long hunt I found:</p><ul><li><a href="https://xnipapp.com/" target="_blank" rel="noopener">Xnip</a> for macOS;</li><li><a href="https://www.snipaste.com/" target="_blank" rel="noopener">Snipaste</a> for Windows, also available for macOS;</li></ul><p>I believe both of these 2 tools are inspired by the legendary QQ screenshot tool:</p><ol><li>Press hotkey draw rectangle on your screen to create screenshot;</li><li>Can take screenshot on single window by by selecting one;</li><li>Good annotation tools for users to make mark;</li><li>Double click to add screenshot to clipboard, which is quite more convenient than those OS built in ones;</li></ol><p>It makes me feel safe to stay away from WeChat.</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;img src=&quot;https://raw.githubusercontent.com/ZekeDa/XnipWebsite/master/images/annotation_screeshot_gif.gif&quot; alt=&quot;image&quot;&gt;&lt;/p&gt;
+&lt;p&gt;Taking scr
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Screenshot" scheme="https://atlassc.net/tags/Screenshot/"/>
+    
+      <category term="macOS" scheme="https://atlassc.net/tags/macOS/"/>
+    
+      <category term="Windows" scheme="https://atlassc.net/tags/Windows/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Oracle Cloud 的羊毛</title>
+    <link href="https://atlassc.net/2019/09/18/oracle-cloud-always-free-plan/"/>
+    <id>https://atlassc.net/2019/09/18/oracle-cloud-always-free-plan/</id>
+    <published>2019-09-18T15:51:55.000Z</published>
+    <updated>2019-10-08T12:52:26.041Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="免费的羊毛刮不刮？"><a href="#免费的羊毛刮不刮？" class="headerlink" title="免费的羊毛刮不刮？"></a>免费的羊毛刮不刮？</h2><p>听闻 Oracle Cloud 出了 always free 的服务，还送300刀试用金，于是上去刮了刮羊毛。</p><h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><ul><li>1/8个OCPU</li><li>1GB RAM</li><li>46GB HDD</li></ul><h2 id="直连可注册"><a href="#直连可注册" class="headerlink" title="直连可注册"></a>直连可注册</h2><ul><li><a href="https://www.oracle.com/cloud/free/" target="_blank" rel="noopener">注册地址</a>；</li><li>填写你的信息和要注册的区域，我选的菲尼克斯；</li><li>填写手机号，接收验证码（支持全球号码，不需要与区域相同）；</li><li>绑定一张外币信用卡：扣1美元授权费，之后会退还；</li><li>注册完成；</li></ul><h2 id="创建实例与配置端口"><a href="#创建实例与配置端口" class="headerlink" title="创建实例与配置端口"></a>创建实例与配置端口</h2><ul><li>创建一个Compute Instances：需要站楼梯，楼梯需要在注册的区域；<ul><li>配置你的ssh-key进行登录；</li></ul></li><li>打开端口：<ul><li>找到Compute Instance 相关的Security List：Networking -&gt; Virtual Cloud Networks -&gt; VirtualCloudNetwork-xxxxxxxx-xxxx -&gt; Security List Details；</li><li>添加一条Ingress Rule，开放你需要打开的端口；</li></ul></li></ul><h2 id="评测一图流"><a href="#评测一图流" class="headerlink" title="评测一图流"></a>评测一图流</h2><img src="/2019/09/18/oracle-cloud-always-free-plan/stats-for-nerd.jpg" class="" title="stats-for-nerd">]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;免费的羊毛刮不刮？&quot;&gt;&lt;a href=&quot;#免费的羊毛刮不刮？&quot; class=&quot;headerlink&quot; title=&quot;免费的羊毛刮不刮？&quot;&gt;&lt;/a&gt;免费的羊毛刮不刮？&lt;/h2&gt;&lt;p&gt;听闻 Oracle Cloud 出了 always free 的服务，还送300刀试
+      
+    
+    </summary>
+    
+    
+    
+      <category term="VPS" scheme="https://atlassc.net/tags/VPS/"/>
+    
+      <category term="OracleCloud" scheme="https://atlassc.net/tags/OracleCloud/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Bootstrap a GitLab pipeline in no time</title>
+    <link href="https://atlassc.net/2019/09/16/bootstrap-a-gitlab-pipeline-in-no-time/"/>
+    <id>https://atlassc.net/2019/09/16/bootstrap-a-gitlab-pipeline-in-no-time/</id>
+    <published>2019-09-16T15:41:06.000Z</published>
+    <updated>2019-10-08T12:52:26.040Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Requirements"><a href="#Requirements" class="headerlink" title="Requirements"></a>Requirements</h2><ul><li>A VPS or Linux machine with more than 4GB RAM;</li><li>Docker and docker-compose installed;</li><li>Linux OS;</li></ul><p>GitLab team officially stated the requirement for RAM is 2GB, but I am sure you really need more than that to run your whole pipeline.</p><h2 id="GitLab-is-good-and-easy-to-setup"><a href="#GitLab-is-good-and-easy-to-setup" class="headerlink" title="GitLab is good and easy to setup"></a>GitLab is good and easy to setup</h2><p>I have been managing 2 GitLab instances for over 4 years, and I am confident to say it’s the best open source private git server you can find for now. It’s not just a git repository server, you can easily setup a whole pipeline for your team with it’s CI/CD functions.</p><p>Your pipeline will be a combination of GitLab and GitLab Runner, with which you can enjoy a programming experience of pushing code to test/deploy. With such a platform you can enjoy an automatic experience of pushing code to verify, build, test and deploy, so that you can concentrate on coding which I think is pretty cool.</p><p>Setting up a GitLab on Google cloud platform is quite simple, you can do it within a few clicks. But the expense is high and you might miss all the fun.</p><p>The GitLab team has built the application into a docker image, it can deployed with just a few lines of docker configuration.</p><h2 id="Run-GitLab-official-image-with-docker-compose"><a href="#Run-GitLab-official-image-with-docker-compose" class="headerlink" title="Run GitLab official image with docker-compose"></a>Run GitLab official image with docker-compose</h2><p>The best way I can come up with to run a single node docker container is to use docker-compose, with which you can put all you docker and app configuration into one yaml.</p><p>There is a famous third party repository named <a href="https://github.com/sameersbn/docker-gitlab" target="_blank" rel="noopener">sameersbn/docker-gitlab</a> that helps bootstrapping gitlab in one single yaml file.</p><p>I used it for a year while no offcial version provided. Then I turned to the official docker image after it came out, for:</p><ul><li>The official image’s configuration is more simple and is loyal to the official documentation;</li><li>It’s a all in one image, database and redis are built within, use less space in your disk;</li><li>It is maintained by the official team, always get latest updates;</li></ul><p>However GitLab team didn’t provide a docker-compose file, so I studied the documentation and made one of my own as below.</p><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">web:</span></span><br><span class="line"><span class="attr">  image:</span> <span class="string">'gitlab/gitlab-ce:latest'</span></span><br><span class="line"><span class="attr">  restart:</span> <span class="string">always</span></span><br><span class="line"><span class="attr">  hostname:</span> <span class="string">'YOUR_HOSTNAME'</span></span><br><span class="line"><span class="attr">  container_name:</span> <span class="string">gitlab</span></span><br><span class="line"><span class="attr">  environment:</span></span><br><span class="line"><span class="attr">    GITLAB_OMNIBUS_CONFIG:</span> <span class="string">|</span></span><br><span class="line"><span class="string">      # url config</span></span><br><span class="line"><span class="string">      external_url 'YOUR_EXTERNAL_URL'</span></span><br><span class="line"><span class="string">      gitlab_rails['time_zone'] = 'Beijing'</span></span><br><span class="line"><span class="string">      gitlab_rails['backup_keep_time'] = 604800</span></span><br><span class="line"><span class="string">      # stmp/email config</span></span><br><span class="line"><span class="string">      gitlab_rails['smtp_enable'] = true</span></span><br><span class="line"><span class="string">      gitlab_rails['smtp_address'] = 'YOUR_SMTP_ADDRESS'</span></span><br><span class="line"><span class="string">      gitlab_rails['smtp_port'] = YOUR_SMTP_PORT</span></span><br><span class="line"><span class="string">      gitlab_rails['smtp_user_name'] = 'YOUR_SMTP_USER_NAME'</span></span><br><span class="line"><span class="string">      gitlab_rails['smtp_password'] = 'YOUR_SMTP_PASSWORD'</span></span><br><span class="line"><span class="string">      gitlab_rails['smtp_authentication'] = 'login'</span></span><br><span class="line"><span class="string">      gitlab_rails['smtp_enable_starttls_auto'] = true</span></span><br><span class="line"><span class="string">      gitlab_rails['smtp_tls'] = true</span></span><br><span class="line"><span class="string">      gitlab_rails['gitlab_email_from'] = 'YOUR_GITLAB_EMAIL_FROM_ADDRESS'</span></span><br><span class="line"><span class="string">      # I prefer disable the https function of internal nginx, and setup SSL outside the container on host machine.</span></span><br><span class="line"><span class="string">      nginx['listen_port'] = 80</span></span><br><span class="line"><span class="string">      nginx['listen_https'] = false</span></span><br><span class="line"><span class="string">      nginx['proxy_set_headers'] = &#123;</span></span><br><span class="line"><span class="string">        "X-Forwarded-Proto" =&gt; "https",</span></span><br><span class="line"><span class="string">        "X-Forwarded-Ssl" =&gt; "on"</span></span><br><span class="line"><span class="string">      &#125;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string"></span><span class="attr">  ports:</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">'10080:80'</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">'10443:443'</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">'10022:22'</span></span><br><span class="line"><span class="attr">  volumes:</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">'/opt/docker/gitlab/config:/etc/gitlab'</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">'/opt/docker/gitlab/logs:/var/log/gitlab'</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">'/opt/docker/gitlab/data:/var/opt/gitlab'</span></span><br></pre></td></tr></table></figure><h2 id="Config-SSL"><a href="#Config-SSL" class="headerlink" title="Config SSL"></a>Config SSL</h2><p>Since the https function built within is disabled, now I can use external SSL tool to setup a secured tranport like <a href="https://certbot.eff.org/" target="_blank" rel="noopener">certbot</a>, of course, I used it with Nginx.</p><p>And this is one of the reasons why I use the official image over <a href="https://github.com/sameersbn/docker-gitlab" target="_blank" rel="noopener">sameersbn/docker-gitlab</a>, I never succeed in configuring SSL with later one.</p><h2 id="Schedule-the-backup"><a href="#Schedule-the-backup" class="headerlink" title="Schedule the backup"></a>Schedule the backup</h2><p>The <a href="https://github.com/sameersbn/docker-gitlab" target="_blank" rel="noopener">sameersbn/docker-gitlab</a> image has a built in backup scheduled task, but offical image is just the applicaiton.</p><p>So I managed the auto backup task with <code>cron</code> in host machine as below</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">30 23 * * * docker exec gitlab /opt/gitlab/bin/gitlab-rake gitlab:backup:create</span><br></pre></td></tr></table></figure><p>This is a <a href="https://docs.docker.com/engine/reference/commandline/exec/" target="_blank" rel="noopener">docker exec</a> command, please run it without the <code>-it</code> parameter, for you are running it in crontab, which is not interactive.</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;Requirements&quot;&gt;&lt;a href=&quot;#Requirements&quot; class=&quot;headerlink&quot; title=&quot;Requirements&quot;&gt;&lt;/a&gt;Requirements&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;A VPS or Linux machine w
+      
+    
+    </summary>
+    
+    
+    
+      <category term="GitLab" scheme="https://atlassc.net/tags/GitLab/"/>
+    
+      <category term="docker" scheme="https://atlassc.net/tags/docker/"/>
+    
+      <category term="docker-compose" scheme="https://atlassc.net/tags/docker-compose/"/>
+    
+      <category term="GitLab-runner" scheme="https://atlassc.net/tags/GitLab-runner/"/>
+    
+      <category term="Nginx" scheme="https://atlassc.net/tags/Nginx/"/>
+    
+      <category term="Certbot" scheme="https://atlassc.net/tags/Certbot/"/>
+    
+      <category term="SSL" scheme="https://atlassc.net/tags/SSL/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>基于 GitLab 实现 DevOps</title>
+    <link href="https://atlassc.net/2019/08/29/run-pipeline-w-gitlab/"/>
+    <id>https://atlassc.net/2019/08/29/run-pipeline-w-gitlab/</id>
+    <published>2019-08-29T14:07:00.000Z</published>
+    <updated>2019-09-09T16:12:41.583Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="GitLab是我们团队的核心协作平台"><a href="#GitLab是我们团队的核心协作平台" class="headerlink" title="GitLab是我们团队的核心协作平台"></a>GitLab是我们团队的核心协作平台</h2><p>在过去4年里，我们团队的整个软件开发流程（代码版本控制、开发任务管理、缺陷管理和自动化部署）都在<a href="https://gitlab.com/gitlab-org/gitlab-ce/" target="_blank" rel="noopener">私有部署的社区版 GitLab</a> 上面进行，它是我们的核心协作平台。配合上 docker 和 cnpm 仓库，我们基本上实现了 JavaScript/NodeJS 全栈的自动化 DevOps。</p><h2 id="使用-GitLab-runner-实现自动化部署的-Pipeline"><a href="#使用-GitLab-runner-实现自动化部署的-Pipeline" class="headerlink" title="使用 GitLab runner 实现自动化部署的 Pipeline"></a>使用 GitLab runner 实现自动化部署的 Pipeline</h2><p>GitLab 有个扩展程序叫 <a href="https://docs.gitlab.com/runner/" target="_blank" rel="noopener">GitLab runner</a>，它与 GitLab 对接之后，GitLab 会将触发的 <a href="https://docs.gitlab.com/ee/ci/pipelines.html" target="_blank" rel="noopener">Pipeline</a> 任务推送到 runner 上执行。</p><p>Runner 上支持多种类型的 <a href="https://docs.gitlab.com/runner/executors/" target="_blank" rel="noopener">executor</a>,我们选择的是 docker executor ，因为我们希望使用 docker 来部署程序，并且也希望服务器的环境相对干净且易于管理。</p><p>docker executor 在工作时会根据 <a href="https://docs.gitlab.com/ee/ci/yaml/" target="_blank" rel="noopener">CI 配置文件</a>中的镜像配置启动一个容器，并执行 CI 配置文件中的脚本。在任务完成后容器会自动销毁，非常干净。</p><p>当然你也可以通过<a href="https://docs.gitlab.com/ee/ci/caching/" target="_blank" rel="noopener">缓存路径配置</a>来重复利用某些文件，比如 node_modules 文件。我们利用这个特性和 <a href="https://docs.gitlab.com/ee/ci/variables/" target="_blank" rel="noopener">pipeline variables</a> 实现了项目分包按需编译。</p><h2 id="我们现在的-DevOps-流程是怎样的？"><a href="#我们现在的-DevOps-流程是怎样的？" class="headerlink" title="我们现在的 DevOps 流程是怎样的？"></a>我们现在的 DevOps 流程是怎样的？</h2><ul><li>开发：<ul><li>工程师在自己分支下编写代码；</li><li>提交到远端后会触发代码检查的 Pipeline；</li></ul></li><li>测试：<ul><li>工程师在功能开发完毕后提交 merge request 到 test 分支；</li><li>主管审查代码并合分支，后触发 test 分支的GitLab ci 脚本，</li><li>GitLab 将 Pipeline 任务推送到 测试服务器上的 runner；</li><li>Runner 根据 CI 脚本构建镜像并部署容器，供测试工程师测试；</li></ul></li><li>发布：<ul><li>主管在测试流程结束后将 test 分支合并到 master 分支，</li><li>GitLab 此时触发 master 分支的 Pipeline 任务，并推送给生产服务器上的 runner 执行（编译程序、构建镜像、部署容器）；</li></ul></li></ul><h2 id="在多工程的项目中实现-Pipeline-接力和按需执行"><a href="#在多工程的项目中实现-Pipeline-接力和按需执行" class="headerlink" title="在多工程的项目中实现 Pipeline 接力和按需执行"></a>在多工程的项目中实现 Pipeline 接力和按需执行</h2><p>由于我们的项目一般都使用了前后端分离设计，前端有时候会分好几个工程，并且后端拆了微服务，因此在发布一个程序时，我们需要进行编译和组装。</p><p>这个时候会有两个问题：</p><h3 id="各个工程的Pipeline如何实现接力？"><a href="#各个工程的Pipeline如何实现接力？" class="headerlink" title="各个工程的Pipeline如何实现接力？"></a>各个工程的Pipeline如何实现接力？</h3><p>Pipeline 接力很容易实现，在一个工程的 Pipeline 结束后通过 GitLab 的 <a href="https://docs.gitlab.com/ee/api/pipelines.html" target="_blank" rel="noopener">Pipeline api</a> 或者 <a href="https://docs.gitlab.com/ee/ci/triggers/" target="_blank" rel="noopener">trigger api</a> 触发另外一个工程师的 Pipeline 即可。</p><h3 id="如何按需且分步进行编译？"><a href="#如何按需且分步进行编译？" class="headerlink" title="如何按需且分步进行编译？"></a>如何按需且分步进行编译？</h3><p>我们在发布一个多组件程序的时候，很多时候只需要更新它的一个组件。我们通过两个方式实了按需分步编译：</p><h4 id="使用-cnpm-归档组件"><a href="#使用-cnpm-归档组件" class="headerlink" title="使用 cnpm 归档组件"></a>使用 cnpm 归档组件</h4><ul><li>使用私有部署 <a href="https://npm.taobao.org/" target="_blank" rel="noopener">cnpm</a> 将各个工程编译归档成package；</li><li>再在一个用作部署的工程中，从 cnpm 中获取各个组件的 package 来组装程序；</li></ul><p>这样如果我们只需要更新组件A，那就只需要编译和归档组件A的新版本到 cnpm 中，在部署时，新版本的组件A会和其他未更新的组件被组装在一起。</p><h4 id="使用-Pipeline-variables-进行控制"><a href="#使用-Pipeline-variables-进行控制" class="headerlink" title="使用 Pipeline variables 进行控制"></a>使用 Pipeline variables 进行控制</h4><ul><li>在部署专用工程的CI 脚本中根据 Pipeline 传入的 variable 来决定是否要编译某一个组件；</li><li>编译完毕之后通过 CI 的 cache 配置缓存一份编译文件，如下次不再编译此组件，直接使用缓存；</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;GitLab是我们团队的核心协作平台&quot;&gt;&lt;a href=&quot;#GitLab是我们团队的核心协作平台&quot; class=&quot;headerlink&quot; title=&quot;GitLab是我们团队的核心协作平台&quot;&gt;&lt;/a&gt;GitLab是我们团队的核心协作平台&lt;/h2&gt;&lt;p&gt;在过去4年里
+      
+    
+    </summary>
+    
+    
+    
+      <category term="gitlab" scheme="https://atlassc.net/tags/gitlab/"/>
+    
+      <category term="pipeline" scheme="https://atlassc.net/tags/pipeline/"/>
+    
+      <category term="DevOps" scheme="https://atlassc.net/tags/DevOps/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>在微信小程序中解jwt.payload</title>
+    <link href="https://atlassc.net/2019/01/09/decode-jwt-payload-in-wechat-miniprogram/"/>
+    <id>https://atlassc.net/2019/01/09/decode-jwt-payload-in-wechat-miniprogram/</id>
+    <published>2019-01-09T10:04:59.000Z</published>
+    <updated>2019-02-20T11:12:45.455Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="使用JWT作认证"><a href="#使用JWT作认证" class="headerlink" title="使用JWT作认证"></a>使用JWT作认证</h2><p>我们部门最近正在开发的一个微信小程序将使用原有的一个项目的RESTful api，该Web Service使用JSONWebToken作认证。JWT的数据中包含一段名为payload的数据使用BASE64进行编码的payload数据，包含了一些可以在客户端中使用的身份信息和token有效期等数据。</p><h2 id="Nodejs解JWT的payload"><a href="#Nodejs解JWT的payload" class="headerlink" title="Nodejs解JWT的payload"></a>Nodejs解JWT的payload</h2><p>在Nodejs中解JWT的payload最简单，可以直接使用<a href="https://www.npmjs.com/package/jsonwebtoken" target="_blank" rel="noopener">JSONWebToken库</a>中的decode()函数可轻松获得：</p><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> jwt = <span class="built_in">require</span>(<span class="string">'jsonwebtoken'</span>);</span><br><span class="line"><span class="keyword">let</span> token = <span class="string">"YOUR_TOKEN"</span>;</span><br><span class="line"><span class="keyword">let</span> payload = jwt.decode(token);</span><br></pre></td></tr></table></figure><h2 id="Web前端中解JWT的payload"><a href="#Web前端中解JWT的payload" class="headerlink" title="Web前端中解JWT的payload"></a>Web前端中解JWT的payload</h2><p>在Web前端中要解JWT的payload<a href="https://stackoverflow.com/questions/38552003/how-to-decode-jwt-token-in-javascript" target="_blank" rel="noopener">也很简单</a>：</p><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> base64Url = token.split(<span class="string">'.'</span>)[<span class="number">1</span>];</span><br><span class="line"><span class="keyword">var</span> base64 = base64Url.replace(<span class="string">'-'</span>, <span class="string">'+'</span>).replace(<span class="string">'_'</span>, <span class="string">'/'</span>);</span><br><span class="line"><span class="keyword">var</span> payload = <span class="built_in">JSON</span>.parse(<span class="built_in">window</span>.atob(base64));</span><br></pre></td></tr></table></figure><p>实现原理是：</p><ul><li>将token中通过.分割取中间（下标1）的字符串，并替换相应字符；</li><li>使用<a href="https://www.w3schools.com/jsref/met_win_atob.asp" target="_blank" rel="noopener">window.atob()</a>函数将base64进行解码；</li><li>最后将解除来的JSON string 转成JSONObject；</li></ul><p>经过检查JSONWebToken库的原码，发现也是这个原理，只是解码base64的方式不同。</p><h2 id="微信小程序解JWT的payload"><a href="#微信小程序解JWT的payload" class="headerlink" title="微信小程序解JWT的payload"></a>微信小程序解JWT的payload</h2><p>根据上面的思路，要实现在微信小程序中解JWT的payload，只需要改用微信小程序中内置的base64库来解即可。</p><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> payloadEncoded = token.split(<span class="string">'.'</span>)[<span class="number">1</span>];</span><br><span class="line"><span class="keyword">let</span> buffer = wx.base64ToArrayBuffer(payloadEncoded);</span><br><span class="line"><span class="keyword">let</span> payloadDecoded = <span class="built_in">String</span>.fromCharCode.apply(<span class="literal">null</span>, <span class="keyword">new</span> <span class="built_in">Uint8Array</span>(buffer));</span><br><span class="line"><span class="keyword">let</span> payload = <span class="built_in">JSON</span>.parse(payloadDecoded);</span><br></pre></td></tr></table></figure><h2 id="微信小程序JWT-payload工具"><a href="#微信小程序JWT-payload工具" class="headerlink" title="微信小程序JWT payload工具"></a>微信小程序JWT payload工具</h2><p>为了在微信小程序端方便的解码和验证JWT，我编写了一个这样的类：</p><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * @author ShinChven Zhang</span></span><br><span class="line"><span class="comment"> * 在微信小程序中解jwt中的payload，并进行有效验证。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">JWTPayload</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * encoded JSONWebToken</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="keyword">constructor</span>(token) &#123;</span><br><span class="line">    <span class="keyword">this</span>.payload = <span class="keyword">this</span>.decodePayload(token);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 解token</span></span><br><span class="line"><span class="comment">   * token JSONWebToken</span></span><br><span class="line"><span class="comment">   * return payload object</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  decodePayload(token) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">let</span> payloadEncoded = token.split(<span class="string">'.'</span>)[<span class="number">1</span>];</span><br><span class="line">      <span class="keyword">let</span> buffer = wx.base64ToArrayBuffer(payloadEncoded);</span><br><span class="line">      <span class="keyword">let</span> payloadDecoded = <span class="built_in">String</span>.fromCharCode.apply(<span class="literal">null</span>, <span class="keyword">new</span> <span class="built_in">Uint8Array</span>(buffer));</span><br><span class="line">      <span class="keyword">return</span> <span class="built_in">JSON</span>.parse(payloadDecoded)</span><br><span class="line">    &#125; <span class="keyword">catch</span> (err) &#123;</span><br><span class="line">      <span class="built_in">console</span>.error(err);</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 验证是否有效</span></span><br><span class="line"><span class="comment">   * return boolean</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  isValid() &#123;</span><br><span class="line">    <span class="keyword">try</span>&#123;</span><br><span class="line">      <span class="keyword">if</span> (<span class="keyword">this</span>.payload &amp;&amp; <span class="keyword">this</span>.payload.exp) &#123;</span><br><span class="line">        <span class="keyword">let</span> timestamp = <span class="built_in">Date</span>.parse(<span class="keyword">new</span> <span class="built_in">Date</span>());</span><br><span class="line">        timestamp = timestamp / <span class="number">1000</span>;</span><br><span class="line">        <span class="built_in">console</span>.log(timestamp)</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">this</span>.payload.exp &gt; timestamp;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;<span class="keyword">catch</span>(err)&#123;</span><br><span class="line">      <span class="built_in">console</span>.error(err);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">module</span>.exports = JWTPayload</span><br></pre></td></tr></table></figure><p>使用：</p><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> jwt = <span class="keyword">new</span> JWTPayload(token);</span><br><span class="line"><span class="keyword">if</span> (jwt.isValid())&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(jwt.payload);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;使用JWT作认证&quot;&gt;&lt;a href=&quot;#使用JWT作认证&quot; class=&quot;headerlink&quot; title=&quot;使用JWT作认证&quot;&gt;&lt;/a&gt;使用JWT作认证&lt;/h2&gt;&lt;p&gt;我们部门最近正在开发的一个微信小程序将使用原有的一个项目的RESTful api，该Web 
+      
+    
+    </summary>
+    
+    
+    
+      <category term="JWT" scheme="https://atlassc.net/tags/JWT/"/>
+    
+      <category term="JSONWebToken" scheme="https://atlassc.net/tags/JSONWebToken/"/>
+    
+      <category term="微信小程序" scheme="https://atlassc.net/tags/%E5%BE%AE%E4%BF%A1%E5%B0%8F%E7%A8%8B%E5%BA%8F/"/>
+    
+      <category term="Base64" scheme="https://atlassc.net/tags/Base64/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>How to solve android download pending problem</title>
+    <link href="https://atlassc.net/2019/01/01/android-download-pending/"/>
+    <id>https://atlassc.net/2019/01/01/android-download-pending/</id>
+    <published>2019-01-01T15:18:11.000Z</published>
+    <updated>2019-01-01T16:33:49.862Z</updated>
+    
+    <content type="html"><![CDATA[<p>There is a built in <a href="https://developer.android.com/reference/android/app/DownloadManager" target="_blank" rel="noopener">Download Manager</a> in Android which was used by many system components and apps. For example, Google play Store uses it to download and update apps, and Google play services uses it to download system update, and Google Chrome uses it to download pwa menifest(I assume). However it can only proceed one task at a time. So when one task is in downloading status, all others will be in pending status.</p><img src="apps-stuck-in-download-pending.jpg" style="width:20em" /><p>I am using a Pixel 2 XL.</p><p>Starting from Android 8, I often see a strange situation that all update tasks in Google play store are stuck in pending mode for days, and I can not download any other apps nor system update at all, I can’t even add a PWA website to my desktop. (At Google DevFest 2018 SHANGHAI, I submitted the PWA issue in Q&amp;A pannel, and the Googler who’s giving speech about PWA don’t even know why.)</p><img src="app-stuck-in-downloading-status.jpg" style="width:20em" /><p>Until one day when I flipping through my installed app list in play store, I found one app is stuck in configuration status, and there is no way I can easily find it on top of any app list, then I figured out why my download queue is always stuck.</p><p>So to solve this download pending problem, all I can do is to find out what is stuck in download queue, and cancel them manually. Mostly they are in deep down of installed list and not in update list, I just have to flipping through and find them. They may be stuck in configuration status, they may also be stuck in downloading status but not proceeding any progress at all.</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;There is a built in &lt;a href=&quot;https://developer.android.com/reference/android/app/DownloadManager&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Download
+      
+    
+    </summary>
+    
+    
+    
+      <category term="download pending problem" scheme="https://atlassc.net/tags/download-pending-problem/"/>
+    
+      <category term="Android" scheme="https://atlassc.net/tags/Android/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>在微信小程序中使用FeathersJS的RESTful API</title>
+    <link href="https://atlassc.net/2018/12/28/use-feathersjs-restful-api-in-wechat-miniprogram/"/>
+    <id>https://atlassc.net/2018/12/28/use-feathersjs-restful-api-in-wechat-miniprogram/</id>
+    <published>2018-12-28T10:29:40.000Z</published>
+    <updated>2019-01-01T05:35:49.165Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近在做微信小程序开发，为已有的一个Web应用程序提供微信小程序客户端。这个Web应用程序基于<a href="https://feathersjs.com/" target="_blank" rel="noopener">FeathersJS</a>开发，提供<a href="https://zh.wikipedia.org/wiki/%E8%A1%A8%E7%8E%B0%E5%B1%82%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2" target="_blank" rel="noopener">RESTful</a> API，因此也想在小程序共用大部分API。</p><h2 id="微信小程序中的HTTP请求"><a href="#微信小程序中的HTTP请求" class="headerlink" title="微信小程序中的HTTP请求"></a>微信小程序中的HTTP请求</h2><p>微信小程序开发中使用<a href="https://developers.weixin.qq.com/miniprogram/dev/api/wx.request.html" target="_blank" rel="noopener">wx.request(Object object)</a>这个API进行http数据请求，且仅支持https证书加密访问。</p><h2 id="JWT认证"><a href="#JWT认证" class="headerlink" title="JWT认证"></a>JWT认证</h2><p>微信小程序的容器并不是一个标准的浏览器，在使用<em>wx.request</em>这个api进行数据请求时，并不会自动带上cookie、session等信息，因此需要自行管理认证信息。我们的应用程序使用的认证方式是<a href="https://jwt.io/" target="_blank" rel="noopener">jwt</a>，要实现jwt认证只需要在发送http请求时将token放于header中即可，这和Android、iOS端的http请求框架封装没有什么两样。</p><h2 id="CRUD"><a href="#CRUD" class="headerlink" title="CRUD"></a>CRUD</h2><h3 id="请求方法对照"><a href="#请求方法对照" class="headerlink" title="请求方法对照"></a>请求方法对照</h3><p>参考维基百科中对<a href="https://en.wikipedia.org/wiki/Create,_read,_update_and_delete" target="_blank" rel="noopener">CRUD</a>的描述，我制作了这样一张表来对照微信小程序中http请求方法与RESTful API中的接收请求方法。</p><table><thead><tr><th>Operation</th><th>SQL</th><th>HTTP</th><th>RESTful WS</th><th>DDS</th><th>FeathersJS RESTclient</th></tr></thead><tbody><tr><td>Create</td><td>INSERT</td><td>PUT / POST</td><td>POST</td><td>WRITE</td><td><a href="https://docs.feathersjs.com/api/client/rest.html#create" target="_blank" rel="noopener">create</a></td></tr><tr><td>Read(Retrieve)</td><td>SELECT</td><td>GET</td><td>GET</td><td>read / take</td><td><a href="https://docs.feathersjs.com/api/client/rest.html#get" target="_blank" rel="noopener">get</a> / <a href="https://docs.feathersjs.com/api/client/rest.html#find" target="_blank" rel="noopener">find</a></td></tr><tr><td>Update(Modify)</td><td>UPDATE</td><td>PUT / POST / PATCH</td><td>PUT</td><td>write</td><td><a href="https://docs.feathersjs.com/api/client/rest.html#update" target="_blank" rel="noopener">update</a> / <a href="https://docs.feathersjs.com/api/client/rest.html#patch" target="_blank" rel="noopener">patch</a></td></tr><tr><td>Delete(Destroy)</td><td>DELETE</td><td>DELETE</td><td>DELETE</td><td>dispose</td><td><a href="https://docs.feathersjs.com/api/client/rest.html#remove" target="_blank" rel="noopener">remove</a></td></tr></tbody></table><p>根据我的实际情况，其中<em>HTTP</em>列是微信小程序端的请求方法（<em>method</em>），<em>FeathersJS RESTclient</em>列为FeathersJS server api 中的接收请求方法。</p><h3 id="微信小程序没有PATCH"><a href="#微信小程序没有PATCH" class="headerlink" title="微信小程序没有PATCH"></a>微信小程序没有PATCH</h3><p>微信小程序的<em>wx.request</em>不支持<em>PATCH</em>和<em>FeathersJS</em>中的<em>update</em>两种请求方式，因此我们只能使用功能类似的PUT来完成数据修改。</p><p>而这是为什么呢？我在寻找解决方案的过程中，我查到了以下这些文献，也许能解释为什么微信团队会选择禁用或者不实现PATCH方法：</p><p>根据维基百科中对<a href="https://en.wikipedia.org/wiki/Patch_verb" target="_blank" rel="noopener">PATCH</a>的描述：</p><ul><li>The PATCH method is a request method supported by the HTTP protocol for making partial changes to an existing resource.</li><li>PATCH方法是HTTP协议支持的请求方法，用于对现有资源进行部分更改。</li></ul><p>而<a href="https://spring.io/understanding/REST#patch" target="_blank" rel="noopener">spring.io 关于的REST 的文档</a>中提到：</p><ul><li>Update only the specified fields of an entity at a URI. <strong>A PATCH request is neither safe nor idempotent (RFC 5789).</strong> That’s because a PATCH operation cannot ensure the entire resource has been updated.</li><li>仅更新URI上实体的指定字段。 <strong>PATCH请求既不安全也不是幂等（RFC 5789）。</strong> 这是因为PATCH操作无法确保整个资源已更新。</li></ul><h3 id="转发PUT到PATCH"><a href="#转发PUT到PATCH" class="headerlink" title="转发PUT到PATCH"></a>转发PUT到PATCH</h3><p>FeathersJS中使用基于<a href="http://docs.sequelizejs.com/" target="_blank" rel="noopener">Sequelize</a>所创建的Service，无论是<a href="https://docs.feathersjs.com/api/client/rest.html#update" target="_blank" rel="noopener">update</a>还是<a href="https://docs.feathersjs.com/api/client/rest.html#patch" target="_blank" rel="noopener">patch</a>都支持仅更新部分提交的字段，未提交的字段会被忽略。而我们项目中使用的是基于knex的Service，如果在小程序上调用PUT且不传全属性，则会将没有传的属性会当作null更新进数据库，如果在其他客户端调用UPDATE且不传全属性，则会返回400请求体错误。</p><p>为了能够支持部分属性更改，我在FeathersJS app启动时添加了一个简单的middleware，将api路由上所有的UPDATE和PUT求请改成了PATCH：</p><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">app.use(<span class="string">'/api/*'</span>,<span class="function"><span class="keyword">function</span> (<span class="params">req, resp, next</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (req.method.toUpperCase() === <span class="string">"PUT"</span> || req.method.toUpperCase() === <span class="string">"UPDATE"</span>) &#123;</span><br><span class="line">    req.method = <span class="string">'PATCH'</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  next();</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;前言&quot;&gt;&lt;a href=&quot;#前言&quot; class=&quot;headerlink&quot; title=&quot;前言&quot;&gt;&lt;/a&gt;前言&lt;/h2&gt;&lt;p&gt;最近在做微信小程序开发，为已有的一个Web应用程序提供微信小程序客户端。这个Web应用程序基于&lt;a href=&quot;https://feathe
+      
+    
+    </summary>
+    
+    
+    
+      <category term="微信小程序" scheme="https://atlassc.net/tags/%E5%BE%AE%E4%BF%A1%E5%B0%8F%E7%A8%8B%E5%BA%8F/"/>
+    
+      <category term="FeathersJS" scheme="https://atlassc.net/tags/FeathersJS/"/>
+    
+      <category term="FeathersJS client" scheme="https://atlassc.net/tags/FeathersJS-client/"/>
+    
+      <category term="HTTP" scheme="https://atlassc.net/tags/HTTP/"/>
+    
+      <category term="RESTful" scheme="https://atlassc.net/tags/RESTful/"/>
+    
+      <category term="CRUD" scheme="https://atlassc.net/tags/CRUD/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Understand Community</title>
+    <link href="https://atlassc.net/2018/12/08/understand-community/"/>
+    <id>https://atlassc.net/2018/12/08/understand-community/</id>
+    <published>2018-12-08T12:49:48.000Z</published>
+    <updated>2019-10-08T12:57:39.627Z</updated>
+    
+    <content type="html"><![CDATA[<p>I didn’t correctly understand the meaning of community until I took a close look at it. </p><p>As far as I know, community is a new word in Chinese. I firstly met it when street offices’ name in China were turned to community at the beginning of 21th century. So I always thought a community is just an area of place, and its translation in Chinese (“社区”) is also referring to area. “区” means area in Chinese. </p><p>I know that BBS is also called community, where people publish posts and do their discussion. I naturally thought that people calling BBS as community is just because they want make users to think the site is an area of virtual space where people gather together to discuss their topics.</p><p>Until I heard Chris Metzen referred people in Azeroth world (who may be players or developers) as a community at his retirement announcement, then I came to realize that I have misunderstood the word all along. It should not be understood as an area or place, it is actually referring a group of people who communicate their common topics, that’s why it is called community. </p><p>Later I met this word again in Red Dead Redemption 2 when Arthur Morgan referred his gang as a community, so I fully understood that he was talking about his people but not his camp and camping place, and also, I found this word to be quite ancient, it exists right before the modern age.</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;I didn’t correctly understand the meaning of community until I took a close look at it. &lt;/p&gt;
+&lt;p&gt;As far as I know, community is a new word
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Chinese" scheme="https://atlassc.net/tags/Chinese/"/>
+    
+      <category term="Translation" scheme="https://atlassc.net/tags/Translation/"/>
+    
+      <category term="Community" scheme="https://atlassc.net/tags/Community/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>搬瓦工火力全开</title>
+    <link href="https://atlassc.net/2018/11/30/bandwagonhost-full-power-activated/"/>
+    <id>https://atlassc.net/2018/11/30/bandwagonhost-full-power-activated/</id>
+    <published>2018-11-30T05:25:06.000Z</published>
+    <updated>2019-01-01T09:41:02.033Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="搬瓦工KiwiVM管理后台取消了一键黑科技"><a href="#搬瓦工KiwiVM管理后台取消了一键黑科技" class="headerlink" title="搬瓦工KiwiVM管理后台取消了一键黑科技"></a>搬瓦工KiwiVM管理后台取消了一键黑科技</h2><p>入了一个年付27.6刀的搬瓦工黑五特别折扣版VPS（2018 Black Friday Special V3 CN2），登录以后发现不再有一键黑科技，原因是搬瓦工自己推出了专门的黑科技上网服务。原先购买的版本，还可以在KiwiVM Control Panel中继续使用一键黑科技。既然不再有一键黑科技，那就只能自己搭建了。</p><h2 id="自己搭建的版本与一键黑科技安装的版本性能区别很大"><a href="#自己搭建的版本与一键黑科技安装的版本性能区别很大" class="headerlink" title="自己搭建的版本与一键黑科技安装的版本性能区别很大"></a>自己搭建的版本与一键黑科技安装的版本性能区别很大</h2><p>由于我现在着迷于docker，于是使用了热门的Docker image来搭建黑科技。我参照README.MD编写好了shell脚本和docker-compose，非常轻松地就拉起了黑科技的container。正在沾沾自喜的时候，却发现自己搭建的版本和KiwiVM管理后台中的一键版有非常大的性能区别，从原先的4K无压力到现在480P都够呛。</p><p><strong><em>这其中到底有怎样的魔法？</em></strong></p><h2 id="我开始排查是哪里出了问题"><a href="#我开始排查是哪里出了问题" class="headerlink" title="我开始排查是哪里出了问题"></a>我开始排查是哪里出了问题</h2><p>我怀疑一共有以下几种可能性：</p><ul><li>CN2机房线路问题；</li><li>Docker image版的问题；</li><li>安装程序版本；</li><li>OS版本；</li></ul><p>我回到老版本的VPS中去验证，重装了OS，重装了多个版本的黑科技以及网上流传的一键脚本，还是不能实现跟KiwiVM管理面板中一键安装版同样的性能，这让我非常苦恼。</p><h2 id="突然我开始回想起被官方文档支配的恐惧"><a href="#突然我开始回想起被官方文档支配的恐惧" class="headerlink" title="突然我开始回想起被官方文档支配的恐惧"></a>突然我开始回想起被<strong>官方文档</strong>支配的恐惧</h2><p>在官网文档中的高级配置章节提到需要对VPS进行两处优化：</p><table><thead><tr><th>文件</th><th>说明</th></tr></thead><tbody><tr><td>/etc/security/limits.conf</td><td>增加打开文件描述符的最大数量</td></tr><tr><td>/etc/sysctl.conf</td><td>调整内核参数</td></tr></tbody></table><p>这个配置我之前照着在DigitalOcean的VPS里试过，效果不好，这次我也在搬瓦工上试了，效果仍然不理想。我顺着这个思路往下找，惊讶地发现用过KiwiVM管理面板中一键安装黑科技的VPS的内核参数配置与官方文档中有不少出入！</p><p><strong><em>原来你使用了这样的魔法！</em></strong></p><p>我复制来<a href="https://gist.github.com/ShinChven/5bcef1735dacabd8fae66a37ba622689#file-sysctl-conf" target="_blank" rel="noopener">一份</a>放到自己搭建的版本里，魔法终于施展成功！火力全开！</p><img src="/2018/11/30/bandwagonhost-full-power-activated/connection-speed-full-power-activated.jpg" class="">]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;搬瓦工KiwiVM管理后台取消了一键黑科技&quot;&gt;&lt;a href=&quot;#搬瓦工KiwiVM管理后台取消了一键黑科技&quot; class=&quot;headerlink&quot; title=&quot;搬瓦工KiwiVM管理后台取消了一键黑科技&quot;&gt;&lt;/a&gt;搬瓦工KiwiVM管理后台取消了一键黑科技&lt;/
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Bandwagonhost" scheme="https://atlassc.net/tags/Bandwagonhost/"/>
+    
+      <category term="VPS" scheme="https://atlassc.net/tags/VPS/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>在React中异步设置组件的默认值</title>
+    <link href="https://atlassc.net/2018/11/09/load-default-value-asynchronously-in-react-component/"/>
+    <id>https://atlassc.net/2018/11/09/load-default-value-asynchronously-in-react-component/</id>
+    <published>2018-11-09T02:57:15.000Z</published>
+    <updated>2019-11-15T16:29:17.390Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="前提"><a href="#前提" class="headerlink" title="前提"></a>前提</h2><ul><li>在开发一个编辑功能的页面时，我们经常需要异步加载页面和待编辑的数据对象；</li><li>如果表单控件先以空数据加载好控件再异步加载异步IO的数据对象，那么像Checkbox（from <a href="https://ant.design/index-cn" target="_blank" rel="noopener">antd</a>）这样的基于状态的图形控件则无法文本输入控件一样重新初始化值（defaultChecked）；</li><li>另外，如果将checked属性直接与数据对象的某个值绑定，会造成控件的状态无法变更问题，因为每次变更控件状态时，都会触发render函数，而如果render 每次执行都加载来自props（redux）数据对象，就会造成这个问题；</li></ul><h2 id="如何解决"><a href="#如何解决" class="headerlink" title="如何解决"></a>如何解决</h2><p>我想到的办法是运用React diff策略来重新载相应的组件，这样像Checkbox组件的defaultChecked 就能在加载异步数据时被触发。 </p><p>具体的做法是就是判断异步数据有没有被加载上来，在未加载和已加载的时候给组件指定不同的key，这样就能触发React 的diff，重新加载组件。</p><figure class="highlight jsx"><figcaption><span>React Component</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">EditProduct</span> <span class="keyword">extends</span> <span class="title">React</span>.<span class="title">PureComponent</span></span>&#123;</span><br><span class="line"></span><br><span class="line">  render&#123;</span><br><span class="line">    <span class="keyword">const</span> &#123;product=&#123;&#125;&#125; = <span class="keyword">this</span>.props.EditProductModel;</span><br><span class="line">    <span class="keyword">return</span> (</span><br><span class="line">      &lt;Checkbox defaultChecked=&#123;product.is_virtual===<span class="number">1</span>&#125;</span><br><span class="line">                key=&#123;product.is_virtual ? <span class="string">'is_virtual_loaded'</span> : <span class="string">'is_virtual_unloaded'</span>&#125;</span><br><span class="line">      /&gt;</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;前提&quot;&gt;&lt;a href=&quot;#前提&quot; class=&quot;headerlink&quot; title=&quot;前提&quot;&gt;&lt;/a&gt;前提&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;在开发一个编辑功能的页面时，我们经常需要异步加载页面和待编辑的数据对象；&lt;/li&gt;
+&lt;li&gt;如果表单控件先以空数据加载好控件再异
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Checkbox" scheme="https://atlassc.net/tags/Checkbox/"/>
+    
+      <category term="react" scheme="https://atlassc.net/tags/react/"/>
+    
+      <category term="diff" scheme="https://atlassc.net/tags/diff/"/>
+    
+      <category term="defaultChecked" scheme="https://atlassc.net/tags/defaultChecked/"/>
+    
+      <category term="Ant design" scheme="https://atlassc.net/tags/Ant-design/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Use Ant Design Checkbox with getFieldDecorator</title>
+    <link href="https://atlassc.net/2018/11/03/ant-design-checkbox-with-getfielddecorator/"/>
+    <id>https://atlassc.net/2018/11/03/ant-design-checkbox-with-getfielddecorator/</id>
+    <published>2018-11-03T04:48:07.000Z</published>
+    <updated>2019-11-15T16:29:17.387Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Error"><a href="#Error" class="headerlink" title="Error"></a>Error</h2><p>Form.getFieldDecorator is an Ant Design <a href="https://ant.design/components/form/" target="_blank" rel="noopener">Form</a> validation tool, it is used to wrapped input components and handle value and value validation. It is working fine with common component with a props named value, <a href="https://github.com/ant-design/ant-design/pull/18497" target="_blank" rel="noopener">but it throws error when used to wrap a Checkbox</a>. </p><figure class="highlight plain"><figcaption><span>error</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Warning: [antd: Checkbox] `value` is not validate prop, do you mean `checked`?</span><br></pre></td></tr></table></figure><h2 id="Solution"><a href="#Solution" class="headerlink" title="Solution"></a>Solution</h2><p>Checkbox is a component that demonstrates and returns a checked status, it simply does not have a props named value build within. So the way to handle this error is simple, I just have to create a custom Checkbox which <a href="https://github.com/ant-design/ant-design/blob/master/components/form/Form.tsx#L81" target="_blank" rel="noopener">maps the options</a> of <code>Form.getFieldDecorator</code> to <a href="https://github.com/ant-design/ant-design/blob/master/components/checkbox/Checkbox.tsx#L15" target="_blank" rel="noopener">Checkbox’s props</a>. </p><figure class="highlight jsx"><figcaption><span>React Component</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React, &#123; PureComponent &#125; <span class="keyword">from</span> <span class="string">'react'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Checkbox &#125; <span class="keyword">from</span> <span class="string">'antd'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="class"><span class="keyword">class</span> <span class="title">CustomCheckbox</span> <span class="keyword">extends</span> <span class="title">PureComponent</span> </span>&#123;</span><br><span class="line">  render() &#123;</span><br><span class="line">    <span class="keyword">return</span> (</span><br><span class="line">      &lt;Checkbox</span><br><span class="line">        defaultChecked=&#123;<span class="keyword">this</span>.props.initialValue&#125;</span><br><span class="line">        checked=&#123;<span class="keyword">this</span>.props.value&#125;</span><br><span class="line">        onChange=&#123;<span class="keyword">this</span>.props.onChange&#125;&gt;</span><br><span class="line">        &#123;<span class="keyword">this</span>.props.text&#125;</span><br><span class="line">      &lt;<span class="regexp">/Checkbox&gt;</span></span><br><span class="line"><span class="regexp">    );</span></span><br><span class="line"><span class="regexp">  &#125;</span></span><br><span class="line"><span class="regexp">&#125;</span></span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;Error&quot;&gt;&lt;a href=&quot;#Error&quot; class=&quot;headerlink&quot; title=&quot;Error&quot;&gt;&lt;/a&gt;Error&lt;/h2&gt;&lt;p&gt;Form.getFieldDecorator is an Ant Design &lt;a href=&quot;https://a
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Ant Design" scheme="https://atlassc.net/tags/Ant-Design/"/>
+    
+      <category term="Checkbox" scheme="https://atlassc.net/tags/Checkbox/"/>
+    
+      <category term="getFieldDecorator" scheme="https://atlassc.net/tags/getFieldDecorator/"/>
+    
+      <category term="Form" scheme="https://atlassc.net/tags/Form/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Dialog activity matching parent&#39;s width</title>
+    <link href="https://atlassc.net/2018/09/22/dialog-activity-matching-parent-width/"/>
+    <id>https://atlassc.net/2018/09/22/dialog-activity-matching-parent-width/</id>
+    <published>2018-09-22T11:17:41.000Z</published>
+    <updated>2018-12-30T06:45:52.711Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Extend-your-theme-from-Dialog-Alert"><a href="#Extend-your-theme-from-Dialog-Alert" class="headerlink" title="Extend your theme from .Dialog.Alert"></a>Extend your theme from .Dialog.Alert</h2><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">style</span> <span class="attr">name</span>=<span class="string">"YOUR_THEME_NAME"</span> <span class="attr">parent</span>=<span class="string">"@style/Theme.AppCompat.Light.Dialog.Alert"</span>&gt;</span></span><br><span class="line"><span class="xml">    <span class="comment">&lt;!--your theme here--&gt;</span></span></span><br><span class="line"><span class="tag">&lt;/<span class="name">style</span>&gt;</span></span><br></pre></td></tr></table></figure><p><strong>Do not extend your theme from .Dialog, if you want your dialog to match parent/window’s width.</strong></p><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">style</span> <span class="attr">name</span>=<span class="string">"YOUR_THEME_NAME"</span> <span class="attr">parent</span>=<span class="string">"@style/Theme.AppCompat.Light.Dialog.Alert"</span>&gt;</span></span><br><span class="line"><span class="xml">    <span class="comment">&lt;!--your theme here--&gt;</span></span></span><br><span class="line"><span class="tag">&lt;/<span class="name">style</span>&gt;</span></span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;Extend-your-theme-from-Dialog-Alert&quot;&gt;&lt;a href=&quot;#Extend-your-theme-from-Dialog-Alert&quot; class=&quot;headerlink&quot; title=&quot;Extend your theme from
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Android" scheme="https://atlassc.net/tags/Android/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Quick proxy in bash</title>
+    <link href="https://atlassc.net/2018/09/22/quick-proxy-in-bash/"/>
+    <id>https://atlassc.net/2018/09/22/quick-proxy-in-bash/</id>
+    <published>2018-09-22T07:14:36.000Z</published>
+    <updated>2018-12-30T06:44:41.333Z</updated>
+    
+    <content type="html"><![CDATA[<p>Sometimes we need to use proxy in bash, but it is boring and inconvenient for us config and clear proxy for bash everytime when we need to use a proxy.</p><h2 id="Create-a-file-which-will-be-used-as-a-command-in-bash"><a href="#Create-a-file-which-will-be-used-as-a-command-in-bash" class="headerlink" title="Create a file which will be used as a command in bash"></a>Create a file which will be used as a command in bash</h2><ol><li>Create a file and save it in /usr/local/bin, so it will be added to $PATH after you grant it execute permission.</li></ol><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vim /usr/<span class="built_in">local</span>/bin/ssproxy</span><br></pre></td></tr></table></figure><ol start="2"><li>Compose a script to set proxy and run your normal commands.</li></ol><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="built_in">export</span> all_proxy=&lt;YOUR_PROXY_URL&gt; <span class="comment"># set all proxy</span></span><br><span class="line">$* <span class="comment"># run your commands</span></span><br></pre></td></tr></table></figure><ol start="3"><li>Grant this file execute permission, so it could be used as a command in bash.</li></ol><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chmod +x /usr/<span class="built_in">local</span>/bin/ssproxy</span><br></pre></td></tr></table></figure><ol start="4"><li>Usage</li></ol><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssproxy &lt;YOUR_NORMAL_COMMAND&gt;</span><br></pre></td></tr></table></figure><h2 id="How-it-works"><a href="#How-it-works" class="headerlink" title="How it works"></a>How it works</h2><ul><li>Create a new bash instance;</li><li>Set proxy;</li><li>Run your commands;</li><li>This bash instance will end after your commands are done, so you don’t have to clear your proxy config in your terminal.</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;Sometimes we need to use proxy in bash, but it is boring and inconvenient for us config and clear proxy for bash everytime when we need t
+      
+    
+    </summary>
+    
+    
+    
+      <category term="commandline" scheme="https://atlassc.net/tags/commandline/"/>
+    
+      <category term="terminal" scheme="https://atlassc.net/tags/terminal/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>命令行翻篱笆</title>
+    <link href="https://atlassc.net/2018/09/22/quick-proxy-in-terminal/"/>
+    <id>https://atlassc.net/2018/09/22/quick-proxy-in-terminal/</id>
+    <published>2018-09-22T06:39:46.000Z</published>
+    <updated>2018-12-30T06:44:34.156Z</updated>
+    
+    <content type="html"><![CDATA[<p>开发的时候经常遇到在命令行里访问GitHub和者某些篱笆外的资源不太方便的情况，于是和同事一起研究出一种在bash中可以方便翻篱笆的方法。</p><h2 id="创建一个可执行文件作为命令使用"><a href="#创建一个可执行文件作为命令使用" class="headerlink" title="创建一个可执行文件作为命令使用"></a>创建一个可执行文件作为命令使用</h2><ol><li>创建一个文件，保存到/usr/local/bin，这样之后它会被添加到path中，便可以在bash 中当作命令使用</li></ol><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vim /usr/<span class="built_in">local</span>/bin/ssproxy</span><br></pre></td></tr></table></figure><ol start="2"><li>编写翻篱笆脚本</li></ol><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="built_in">export</span> all_proxy=&lt;YOUR_PROXY_URL&gt; <span class="comment"># 设置全局Proxy</span></span><br><span class="line">$* <span class="comment"># 通配符，它会拼接你需要运行的命令</span></span><br></pre></td></tr></table></figure><ol start="3"><li>增加运行权限</li></ol><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chmod +x /usr/<span class="built_in">local</span>/bin/ssproxy</span><br></pre></td></tr></table></figure><ol start="4"><li>使用</li></ol><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssproxy &lt;YOUR_NORMAL_COMMAND&gt;</span><br></pre></td></tr></table></figure><h2 id="运行原理"><a href="#运行原理" class="headerlink" title="运行原理"></a>运行原理</h2><ul><li>新起一个bash实例；</li><li>设置全局代理；</li><li>拼接运行传入命令；</li><li>结束bash实例；</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;开发的时候经常遇到在命令行里访问GitHub和者某些篱笆外的资源不太方便的情况，于是和同事一起研究出一种在bash中可以方便翻篱笆的方法。&lt;/p&gt;
+&lt;h2 id=&quot;创建一个可执行文件作为命令使用&quot;&gt;&lt;a href=&quot;#创建一个可执行文件作为命令使用&quot; class=&quot;head
+      
+    
+    </summary>
+    
+    
+    
+      <category term="commandline" scheme="https://atlassc.net/tags/commandline/"/>
+    
+      <category term="terminal" scheme="https://atlassc.net/tags/terminal/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>用hexo重新搭建了博客</title>
+    <link href="https://atlassc.net/2018/09/16/new-to-hexo/"/>
+    <id>https://atlassc.net/2018/09/16/new-to-hexo/</id>
+    <published>2018-09-16T08:26:21.000Z</published>
+    <updated>2018-09-18T14:50:57.215Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="为什么要搭建博客？"><a href="#为什么要搭建博客？" class="headerlink" title="为什么要搭建博客？"></a>为什么要搭建博客？</h2><p>博客这种互联网2.0时代早期的产物，早在社交网络、移动互联网兴起的时候就已经褪去热度。现在自媒体平台大行其道，自媒体人肯定会选择一个流量平台，而不是自己搭建一个难以吸引到读者的独立博客。</p><p>而我还是选择自己动手搭建一个独立博客，无外乎有这样一些原因：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">有技术上的可玩性，是实践和学习技术的好机会；</span><br><span class="line">管理方便、统一归档和备份，不会因为平台突然关闭丢失资料；</span><br><span class="line">不受平台审查限制，可以自由的撰写和记录；</span><br><span class="line">避开媒体社区上的争吵和吹嘘；</span><br></pre></td></tr></table></figure><p>相信大部分还在维护独立博客的人，应该都会有一些同感。</p><h2 id="hexo之前我用过什么？"><a href="#hexo之前我用过什么？" class="headerlink" title="hexo之前我用过什么？"></a>hexo之前我用过什么？</h2><h3 id="Windows-Live-Spaces"><a href="#Windows-Live-Spaces" class="headerlink" title="Windows Live Spaces"></a>Windows Live Spaces</h3><p>最早从Windows Live Spaces入坑玩博客，第一次感受到了可以自由发表写作的喜悦和优越感。而当时我还在读高中，根本不懂什么是写作，在玩WLS的大半时间里我都只是在胡乱排版地记录生活和无病呻吟，和现在微信公众号里的一些口水配图文的样貌差不多。</p><p>然而也有一些收获。</p><h4 id="网络社交的收获"><a href="#网络社交的收获" class="headerlink" title="* 网络社交的收获"></a>* 网络社交的收获</h4><p>感谢微软的运营团队，他们组织的一些空间互动活动，让我结交了认识时间最长的一批网友，是一群跟我志同道合的人，和他们时常可以就共同话题聊到很晚。（补充：Windows Live Spaces 和 Windows Live Messenger, aka MSN，其实就是微软的QQ和QQ空间，而微软用户的共同心理优越感直到现在还能和一些80后的朋友聊起来）。</p><p>在那个时候，家长普遍认为网友都是骗子，但我却十分珍惜那些“网上邻居”，毕竟80后独生子女在家太寂寞了。</p><h4 id="Web技术认知的收获"><a href="#Web技术认知的收获" class="headerlink" title="* Web技术认知的收获"></a>* Web技术认知的收获</h4><p>Windows Live Spaces 的写作体验是非常好的。微软到底是技术大佬，单单为了写博客这个事，还制定了发布协议、开发了桌面客户端。当时各大平台的Web Editor都很简陋，能在Windows Live Writer这个客户端上撰写日志简直是至尊体验，后来日志发布协议还集成到了Ribbon界面时代的Word里去了，用Word排版写博客，一键发送，你怕不怕？</p><p>当时还不会编程，但已经凭借对Space/Writer的玩弄，对Web技术有了基本的认知（html标签、http协议）。这应该就是我后来转行学编程很顺利的原因吧。</p><p>在使用Windows Live Spaces的后期，我开始注重日志的质量，希望在我的Space里面发布的内容不仅是生活琐事，也能提供一些能帮助到别人的信息。这个转变应该是源于一次在Spaces上发布了一篇修复Windows Live套件损坏的攻略日志，这篇日志被路人推送到了豆瓣阅读广场的首页，成功吸引了大量碰到相同问题的朋友来我的Space踩踏。可惜当年没有知乎，不然我现在也数万粉丝的知乎大神。</p><h3 id="时光网"><a href="#时光网" class="headerlink" title="时光网"></a>时光网</h3><p>在玩弄Windows Live Spaces之外，我还会去时光网上写一些很幼稚的影评。当时我已经对RSS有了非常清晰的认知了。之所以喜欢时光网，也是因为它的RSS源功能比较好用。我会用Google Reader订阅主站新闻，也会订阅一些观点犀利的影评博主。</p><h3 id="Google-Reader"><a href="#Google-Reader" class="headerlink" title="Google Reader"></a>Google Reader</h3><p>Google Reader在关闭的时候我就写过一篇回顾Reader的<a href="/2013/05/03/goodbye-google-reader/">日志</a>，它是我阅读博客和资讯最重要的工具。当时，在我看来，相比普通用户用浏览器收藏夹来收藏链接的方法，我用Google Reader订阅管理内容和站点简直就是神操作。我以为在Reader关闭之后我会逐渐淡忘掉对RSS阅读器的需求，结果我到现在还在用Feedly。Google now feed和刚出的Google news根本不过瘾。</p><h3 id="WordPress"><a href="#WordPress" class="headerlink" title="WordPress"></a>WordPress</h3><h4 id="辗转反折"><a href="#辗转反折" class="headerlink" title="* 辗转反折"></a>* 辗转反折</h4><p>微软宣布要关闭Windows Live Spaces，让我第一次体验到有些东西就是会稍纵即逝（Google Reader 是第二次）。Space关闭以后，微软针对不同地区的用户提供了迁移方案。默认方案是迁移到WordPress，针对中国特色，在天朝还可迁往QQ空间、新浪博客。我选择了WordPress，然后<a href="wordpress.com">wordpress.com</a>没用多久就开始不能访问了，于是我顺理成章地开启自建WordPress之旅。</p><h4 id="初尝云计算"><a href="#初尝云计算" class="headerlink" title="* 初尝云计算"></a>* 初尝云计算</h4><p>虽然我现在已经是Web开发的老手，但那个时候还没有经济条件也不会搭建和维护自己的服务器。只能根据Google到的一些攻略，尝试一些免费的云服务。那时我应该刚开始编程没多久，对于服务器接触很少，对云计算也没什么概念，冒冒失失就上了OpenShift和ZendCloud。</p><p>对ZendCloud记不太清了，但是对OpenShift记忆犹新。这些尝试都是有收获的，在用了OpenShift以后才知道什么是SSH公钥和密钥，对云平台的架构和持续集成也有了一定的认识。总之，在我当时看来，只需要在管理后台选择好程序运行引擎和数据库，然后通过git提交代码就能发布WordPress，改两行代码再提交，马上又能看到更新，这真的很神奇。而现在我已经能用Gitlab和docker打造一个自己的DevOps了，这可以算是学会魔法一般的体验了。</p><h4 id="免费没好货"><a href="#免费没好货" class="headerlink" title="* 免费没好货"></a>* 免费没好货</h4><p>还记得跟着攻略申请过一个atlassc.tk的免费域名，用了一周就被人盗走，域名注册平台那边用的还是明文密码，他们给我发确认邮件的时候直接把我的密码发回来了，吓得我把常用的密码全改了。</p><h2 id="为什么选择了hexo？"><a href="#为什么选择了hexo？" class="headerlink" title="为什么选择了hexo？"></a>为什么选择了hexo？</h2><h3 id="非常符合程序员的习惯"><a href="#非常符合程序员的习惯" class="headerlink" title="非常符合程序员的习惯"></a>非常符合程序员的习惯</h3><p>使用hexo，我可以用VSCode来管理我的博客，我可以命令来创建日志，我可以用markdown来写日志。想调整页面样式、按钮、图标什么的，我直接在写日志的同时就一起改掉了。想增加点功能，我去npm 里淘一下，马上搞定。如果实在想装一下逼，我甚至可以用Vim来写博客，想想都很酸爽。</p><h3 id="有技术架构上的快感"><a href="#有技术架构上的快感" class="headerlink" title="有技术架构上的快感"></a>有技术架构上的快感</h3><p>上文有提到，我成为DevOps的粉丝有很长时间了。经过简单的配置，我的hexo已经可以在gitlab的Pipeline里运行了。我提交完写好的日志以后，1分钟内Pipeline就会从新生成整个博客的静态文件，并在httpd的容器里运行起来。这样的体验就像上班时提交代码，然等待项目更新一样让人充满着期待。</p><h2 id="带过来了五公斤的回忆"><a href="#带过来了五公斤的回忆" class="headerlink" title="带过来了五公斤的回忆"></a>带过来了五公斤的回忆</h2><p>过去博客停了有好几年，因为把创作的精力都放在写代码上了。现在决定还是要拾起来，有所记录、总结和思考。</p><p>从Windows Live Spaces末期到WordPress平台主要发布过的日志大多都是一些英文翻译的习作，并没有太多可阅读的价值，所有的数据我都存着，但只带过来五公斤的回忆。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;为什么要搭建博客？&quot;&gt;&lt;a href=&quot;#为什么要搭建博客？&quot; class=&quot;headerlink&quot; title=&quot;为什么要搭建博客？&quot;&gt;&lt;/a&gt;为什么要搭建博客？&lt;/h2&gt;&lt;p&gt;博客这种互联网2.0时代早期的产物，早在社交网络、移动互联网兴起的时候就已经褪去热度
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>如何为 Docker 扫地</title>
+    <link href="https://atlassc.net/2018/07/10/clean-docker/"/>
+    <id>https://atlassc.net/2018/07/10/clean-docker/</id>
+    <published>2018-07-10T11:09:07.000Z</published>
+    <updated>2019-09-16T17:08:45.288Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="为什么需要为-Docker-扫地？"><a href="#为什么需要为-Docker-扫地？" class="headerlink" title="为什么需要为 Docker 扫地？"></a>为什么需要为 Docker 扫地？</h2><p>相同名字和 tag 的 Docker image 在更新以后，旧的 image 并不会被删除( docker rmi )，一般只会被删除 tag，如果你也像我们一样在测试环境中快速迭代版本，那用不了多久就会产生很多 tag 为 none 的无用 image，它们会占用很多磁盘空间；</p><p>在日常使用中，也可能产生很多已停止的 container，它们有些是由于手动运行而忘记关掉的，有些是由于其他原因挂掉了而保留下来的“尸体”；</p><p>这些 untagged image 和 stopped container 都是我们要清理的对象；</p><h2 id="如何快速清理？"><a href="#如何快速清理？" class="headerlink" title="如何快速清理？"></a>如何快速清理？</h2><p>如果你确定这些 image 和 container 都是可以被清理掉的， 那么可以使用以下这些命令来进行快速清理。</p><h3 id="清理掉所有未被使用的-image"><a href="#清理掉所有未被使用的-image" class="headerlink" title="清理掉所有未被使用的 image"></a>清理掉所有未被使用的 image</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker images -q -f dangling=<span class="literal">true</span> | xargs --no-run-if-empty docker rmi</span><br></pre></td></tr></table></figure><h3 id="清理掉所有-untagged-image"><a href="#清理掉所有-untagged-image" class="headerlink" title="清理掉所有 untagged image"></a>清理掉所有 untagged image</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker rmi $(docker images | grep <span class="string">"&lt;none&gt;"</span> | awk <span class="string">"&#123;print <span class="variable">$3</span>&#125;"</span>)</span><br></pre></td></tr></table></figure><h3 id="清理掉所有-stopped-container"><a href="#清理掉所有-stopped-container" class="headerlink" title="清理掉所有 stopped container"></a>清理掉所有 stopped container</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker ps -q -f status=exited | xargs --no-run-if-empty docker rm</span><br></pre></td></tr></table></figure><h3 id="使用-docker-compose-来管理-container"><a href="#使用-docker-compose-来管理-container" class="headerlink" title="使用 docker-compose 来管理 container"></a>使用 docker-compose 来管理 container</h3><p>在使用 docker-compose down 或者 docker-compose up （更新）时，旧的 container 会自动被删除掉。</p><h2 id="注意保护你的数据！"><a href="#注意保护你的数据！" class="headerlink" title="注意保护你的数据！"></a>注意保护你的数据！</h2><ul><li>在使用 docker 的时候，无论是 image 还是 container 都不应该用来保存数据和文件；</li><li>在使用 docker 的时候，image 和 container 应该被视为被编译后的程序和文件，它们极易在迭代的时候被抛弃和删除掉；</li><li>如果你的程序会生产数据和文件，请一定要通过 volume 映射到宿主机的磁盘上，或者存储于外部数据库，如果你的数据库也是通过 docker 运行，请一定要将数据库存储的文件也映射到宿主机上；</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;为什么需要为-Docker-扫地？&quot;&gt;&lt;a href=&quot;#为什么需要为-Docker-扫地？&quot; class=&quot;headerlink&quot; title=&quot;为什么需要为 Docker 扫地？&quot;&gt;&lt;/a&gt;为什么需要为 Docker 扫地？&lt;/h2&gt;&lt;p&gt;相同名字和 tag 
+      
+    
+    </summary>
+    
+    
+    
+      <category term="docker" scheme="https://atlassc.net/tags/docker/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Docker in Docker</title>
+    <link href="https://atlassc.net/2018/05/28/docker-in-docker/"/>
+    <id>https://atlassc.net/2018/05/28/docker-in-docker/</id>
+    <published>2018-05-28T12:34:43.000Z</published>
+    <updated>2019-09-18T13:20:14.134Z</updated>
+    
+    <content type="html"><![CDATA[<p>Basically, you can’t run a docker engine in a docker container, but in some use cases, you might still want to call docker client to build image and run container. In my use case is that I use docker executor in GitLab runner, and my apps are all deployed in docker containers, so I have to call call docker within the container at the deploy sequence.</p><p>The good thing is, docker client and docker engine can be seprated, and you can mirror the /var/run/docker.sock in container with the one your host machine which a docker engine runs within through docker volume.</p><p>In order to do the volume mirror, I edited the gitlab-runer config after it is configured as below.</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">concurrent = 1</span><br><span class="line">check_interval = 0</span><br><span class="line"></span><br><span class="line">[[runners]]</span><br><span class="line">  name = &quot;my-runner&quot;</span><br><span class="line">  url = &quot;MY_GITLAB_URL&quot;</span><br><span class="line">  token = &quot;MY_TOKEN&quot;</span><br><span class="line">  executor = &quot;docker&quot;</span><br><span class="line">  [runners.docker]</span><br><span class="line">    tls_verify = false</span><br><span class="line">    image = &quot;docker:latest&quot;</span><br><span class="line">    privileged = true</span><br><span class="line">    disable_cache = false</span><br><span class="line">    # mirror /var/run/docker.sock in your host that runs docker engine to your executor container</span><br><span class="line">    volumes = [&quot;/var/run/docker.sock:/var/run/docker.sock&quot;, &quot;/cache&quot;]</span><br><span class="line">    cache_dir = &quot;cache&quot;</span><br><span class="line">    shm_size = 0</span><br><span class="line">  [runners.cache]</span><br></pre></td></tr></table></figure><ul><li>I used the official docker image which contains a docker client, of course you can build customed image with docker client installed within, that is easy.</li><li>I mirrored the host’s /var/run/docker.sock to gitlab-runner’s executor container so that the docker client in container can be used with a running docker engine. You’re welcome to do the config this volume in any other way you use docker like <code>docker run</code> or <code>docker-compose</code>.</li></ul><p>To build a customed image with docker client is simple, you just do the <a href="https://docs.docker.com/engine/reference/builder/#copy" target="_blank" rel="noopener">COPY</a> like what I do in the Dockerfile given below.</p><figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> YOUR_IMAGE</span><br><span class="line"></span><br><span class="line"><span class="comment"># please download the docker client before you build the image at https://download.docker.com/linux/static/stable/x86_64/ .</span></span><br><span class="line"><span class="keyword">COPY</span><span class="bash"> docker-ce.tgz /root/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">cd</span> /root/ \</span></span><br><span class="line"><span class="bash">&amp;&amp; tar xzvf docker-ce.tgz \</span></span><br><span class="line"><span class="bash">&amp;&amp; cp docker/* /usr/bin/ \</span></span><br><span class="line"><span class="bash">&amp;&amp; docker --version \</span></span><br><span class="line"><span class="bash">&amp;&amp; rm -rf /root/docker /root/docker-ce.tgz</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># please download the docker-compose from https://github.com/docker/compose/releases if you also want to use it.</span></span><br><span class="line"><span class="keyword">COPY</span><span class="bash"> docker-compose /usr/<span class="built_in">local</span>/bin/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> chmod +x /usr/<span class="built_in">local</span>/bin/docker-compose</span></span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;Basically, you can’t run a docker engine in a docker container, but in some use cases, you might still want to call docker client to buil
+      
+    
+    </summary>
+    
+    
+    
+      <category term="docker" scheme="https://atlassc.net/tags/docker/"/>
+    
+      <category term="gitlab-runner" scheme="https://atlassc.net/tags/gitlab-runner/"/>
+    
+      <category term="gitlab" scheme="https://atlassc.net/tags/gitlab/"/>
+    
+      <category term="pipeline" scheme="https://atlassc.net/tags/pipeline/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>上手NAS</title>
+    <link href="https://atlassc.net/2018/03/17/new-to-nas/"/>
+    <id>https://atlassc.net/2018/03/17/new-to-nas/</id>
+    <published>2018-03-16T17:17:26.000Z</published>
+    <updated>2019-02-20T11:12:45.460Z</updated>
+    
+    <content type="html"><![CDATA[<p>移动硬盘我大概有5、6个，容量加起来超过10TB。由于有两台电脑（一台坐着用、一台躺着用~），所以经常要插拔。我不是很喜欢Windows 的文件夹共享功能，尤其是Windows 10以后，时好时坏用着有脾气。</p><p><p>路由器是<a href="http://www.netgear.com.cn/home/products/networking/wifi-routers/wndr4300.aspx" target="_blank" rel="noopener">网件WNDR4300</a>，买的时候听说功能很强大，路由器功能还行，但USB读写速度慢得感人，就不想用它挂硬盘共享文件了。也刷过OpenWRT，觉得路由器的配置总之还是低，玩起来没劲儿。</p><p><p>看了<a href="https://www.youtube.com/watch?v=quouML5-UZI" target="_blank" rel="noopener">iJustine的视频</a>受到启发，决定添置一台NAS。</p><h2 id="群晖DS718"><a href="#群晖DS718" class="headerlink" title="群晖DS718+"></a>群晖DS718+</h2><p>于是年前买了台<a href="https://www.synology.cn/zh-cn/products/DS718+" target="_blank" rel="noopener">群晖DS718+</a>，买之前听朋友提到“群晖”这个牌子，感觉像是个国产华强北的厂商。之前我对NAS界基本上是一无所知的，后来了解了才知道是非常有实力的台湾品牌。</p><p><p>目前装了1块6年前买的2TB西数绿盘，挂了3块移动硬盘在用，现在我的两台平板电脑和两台PC都能很方便的从群晖上访问共享文件，用得挺开心的。之后蹲京东硬盘打折，准备看情况是入12TB还是24TB，目前没有组可备份<a href="https://www.synology.com/zh-cn/knowledgebase/DSM/help/DSM/StorageManager/volume_diskgroup_what_is_raid" target="_blank" rel="noopener">RAID</a>的计划。</p><h3 id="设备基本概况"><a href="#设备基本概况" class="headerlink" title="设备基本概况"></a>设备基本概况</h3><ul><li>2个盘位，最大支持24TB；</li><li>赛扬处理器；</li><li>2G内存，可扩展至6G；</li><li>运行基于Linux的<a href="https://www.synology.cn/zh-cn/dsm" target="_blank" rel="noopener">DSM操作系统</a>(<a href="https://www.synology.cn/zh-cn/dsm/live_demo" target="_blank" rel="noopener">Live Demo</a>)：<ul><li>浏览器登陆访问，提供免费的动态域名解析，外网访问方便；</li><li>有非常丰富<a href="https://www.synology.cn/zh-cn/dsm/packages" target="_blank" rel="noopener">Package</a>可安装，但迅雷远程下载已废，我猜是迅雷不想再为别人的设备做嫁衣了；</li><li>可以玩Docker！</li></ul></li></ul><h3 id="下载工具"><a href="#下载工具" class="headerlink" title="下载工具"></a>下载工具</h3><h4 id="Download-Station"><a href="#Download-Station" class="headerlink" title="Download Station"></a>Download Station</h4><p>上面提到群晖已经与迅雷决裂了，于是群晖自己推出了替代迅雷的下载工具<a href="https://www.synology.com/zh-cn/knowledgebase/DSM/help/DownloadStation/DownloadStation_desc" target="_blank" rel="noopener">Download Stations</a>，下载功能还算齐全，BT种子、磁力链接、电驴、http/ftp等各种链接都吃。使用下来觉得下载热门资源基本是够用的，但是<strong>没有迅雷会员高速通道</strong>是硬伤，下载一些老资源或者冷门资源的时候，要纯靠P2P还真是随缘。</p><p><p>在公司通过群晖DSM的External Access向DownloadStation添加下载任务，回家的时候缘分好的话就应该下载好了，真是惬意。</p><h4 id="迅雷的替代方案"><a href="#迅雷的替代方案" class="headerlink" title="迅雷的替代方案"></a>迅雷的替代方案</h4><p>无法使用迅雷的时候想过一些替代方案：</p><ul><li><a href="https://github.com/yinheli/docker-thunder-xware" target="_blank" rel="noopener">使用docker运行xware</a>：结果发现迅雷把这条路也堵死了，现在xware也不再支持会员加速通道，最多只能当作远程下载功能添加任务下载，而且只能有3个active的下载任务。今年这个会员真是充得有气。</li><li>百度网盘同步：群晖的网盘同步功能可以接入百度网盘，有些资源的缘分还能用度盘争取一下。</li><li>PC迅雷下载直接写入群晖共享文件夹，但是还需要再开一台电脑，不够环保。</li></ul><h4 id="网盘同步"><a href="#网盘同步" class="headerlink" title="网盘同步"></a>网盘同步</h4><p>群晖可扩展的功能非常多，我还远远没把它们充分地运用起来，网盘同步也是其中一个很好用的功能。群晖的网盘同步功能可接入很多的网盘服务，除了国产度盘、企鹅盘以外，还有各种国外的主流网盘，总共20多种。</p><p><p>平时使用OneDrive比较多，我已经把我的OneDrive文件全部同步到了群晖，在PC上释放不常用的副本文件空间。</p><h3 id="文件共享"><a href="#文件共享" class="headerlink" title="文件共享"></a>文件共享</h3><p>我添置NAS的主要目的有两个：</p><ul><li>低功耗24小时待机下载，虽然不知道群晖的功耗会不会真的很低，但电费增加是肯定的了，毕竟多了一台长待机的设备；</li><li>网络文件共享；</li></ul><p>我把媒体文件夹和接在群晖上的移动硬盘都共享出来了，完美解决了之前用移动硬盘插来插去的麻烦。</p><p><p>群晖网线直插路由器，所以从其他设备访问群晖的共享文件夹的时候，速度是很快的，蓝光原盘可以流畅播放，这个让我很感动！</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;移动硬盘我大概有5、6个，容量加起来超过10TB。由于有两台电脑（一台坐着用、一台躺着用~），所以经常要插拔。我不是很喜欢Windows 的文件夹共享功能，尤其是Windows 10以后，时好时坏用着有脾气。&lt;/p&gt;
+&lt;p&gt;
+
+&lt;p&gt;路由器是&lt;a href=&quot;http://
+      
+    
+    </summary>
+    
+    
+    
+      <category term="NAS" scheme="https://atlassc.net/tags/NAS/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>PowerDVD 17 Ultra和蓝光区码</title>
+    <link href="https://atlassc.net/2018/03/15/powerdvd-and-bluray-region-code/"/>
+    <id>https://atlassc.net/2018/03/15/powerdvd-and-bluray-region-code/</id>
+    <published>2018-03-14T17:45:40.000Z</published>
+    <updated>2018-12-30T06:44:59.518Z</updated>
+    
+    <content type="html"><![CDATA[<p><a href="https://www.cyberlink.com/store/powerdvd-ultra/buy_en_US.html" target="_blank" rel="noopener">PowerDVD</a>是老牌的电影光盘播放器，功能强大，解码能力一流，还能播放蓝光菜单，十多年前看DVD的时候我就着迷这个播放器软件。那个时候的正版软件的售价和我的消费能力还有着深刻的矛盾，一直没能舍得买个正版，而现在<a href="https://www.cyberlink.com/products/powerdvd-ultra/compare-versions_en_US.html" target="_blank" rel="noopener">PowerDVD 17 Ultra 在疯狂打折，只需要44.95刀</a>，于是果断剁了。</p><p><p>蓝光播放器一般设置了<a href="https://zh.wikipedia.org/zh-hans/%E8%97%8D%E5%85%89%E5%85%89%E7%A2%9F?#%E5%8D%80%E7%A2%BC" target="_blank" rel="noopener">区码限制</a>，在中国地区安装了PowerDVD以后，默认会设置成中国C区。要播放其他区蓝光，需要去设置中更改蓝光区码，修改5次以后会被锁定区码。</p><p><p>理论上来说，软件的这些限制都是依赖于配置或者数据文件，于是Google 到了重置计数和区码的方法，只要删除特定文件即可：</p><figure class="highlight cmd"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">@<span class="built_in">echo</span> off</span><br><span class="line"><span class="built_in">attrib</span> -h -r -s "<span class="variable">%PROGRAMDATA%</span>\CyberLink\BDNAV\ris.ifo"</span><br><span class="line"><span class="built_in">del</span> "<span class="variable">%PROGRAMDATA%</span>\CyberLink\BDNAV\ris.ifo"</span><br></pre></td></tr></table></figure><p><p>直接删除BDNAV文件夹以后，区码修改计数会被重置，区码也会变成A区。我重置了计数以后，试了试，我大部分原来因为区码不对而放不出来的蓝光，现在能播放了。</p><p><p>后来想通了，索性就设置成A区好了，反正我想看的蓝光都是A区或者Region Free的。</p><p><p>那么<strong>不能播放蓝光菜单</strong>以及<strong>音频解码能力一般</strong>的<a href="https://potplayer.daum.net/" target="_blank" rel="noopener">PotPlayer</a>可以吃灰了。当然我不会卸载它，我还要靠它截图。为了保护版权，PowerDVD还有另外一个限制，就是不能对蓝光光盘截图。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;a href=&quot;https://www.cyberlink.com/store/powerdvd-ultra/buy_en_US.html&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;PowerDVD&lt;/a&gt;是老牌的电影光盘播放器，功能强大，解码能力一
+      
+    
+    </summary>
+    
+    
+    
+      <category term="PowerDVD" scheme="https://atlassc.net/tags/PowerDVD/"/>
+    
+      <category term="Blu-ray" scheme="https://atlassc.net/tags/Blu-ray/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Notify Item Removed Safely</title>
+    <link href="https://atlassc.net/2017/05/22/notify-item-removed-safely/"/>
+    <id>https://atlassc.net/2017/05/22/notify-item-removed-safely/</id>
+    <published>2017-05-22T04:17:54.000Z</published>
+    <updated>2020-01-17T16:35:27.565Z</updated>
+    
+    <content type="html"><![CDATA[<p>RecyclerView’s adapter provides more powerful methods for developers to animate their list like you can easily run a remove animation on one particular item in the list by calling <code>adapter.notifyItemRemoved(position)</code>.</p><p>But you must be careful with the <code>position</code> when you removed the one last item in your list, for there won’t be any item left in your list to be animated, you might just get an <code>java.lang.IndexOutOfBoundsException</code> instead of an animation.</p><p>So in my case, I use <code>adapter.notifyItemRemoved(position)</code> only when there are items left in my list like:</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (list.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    adapter.notifyItemRemoved(position); <span class="comment">// animate removing when there are items left in the list.</span></span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    adapter.notifyDataSetChanged(); <span class="comment">// refresh the whole list there is no item left in the list.</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;RecyclerView’s adapter provides more powerful methods for developers to animate their list like you can easily run a remove animation on 
+      
+    
+    </summary>
+    
+    
+    
+      <category term="Android" scheme="https://atlassc.net/tags/Android/"/>
+    
+      <category term="RecyclerView" scheme="https://atlassc.net/tags/RecyclerView/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Goodbye Google Reader</title>
+    <link href="https://atlassc.net/2013/05/03/goodbye-google-reader/"/>
+    <id>https://atlassc.net/2013/05/03/goodbye-google-reader/</id>
+    <published>2013-05-03T13:11:00.000Z</published>
+    <updated>2018-12-30T06:45:25.030Z</updated>
+    
+    <content type="html"><![CDATA[<img src="/2013/05/03/goodbye-google-reader/remember-reader.png" class="" title="remember-reader"><p>已经不记得我是先用上Twitter 还是Google Reader，更不记得是从Twtter 了解道Google Reader 还是从Google Reader 认识Twitter的。我能记得是，我一定是从Google Reader 开始成为Google 重度用户的。</p><p>在这之前我对Web 的了解就是网站，各种网站，即使是玩博客，那也只是把博客当作是一个由博客提供商托管的个人网站。直到用到了Google Reader 才意识到，Web 也是软件应用啊（2018年修订，数据和界面可以分离）。Reader 相比以往其它网站，有更高的时效、更多的功能由我去操作，比如订阅、分类管理和分享，似乎是要将互联网这全盘的散沙都汇聚到一起浏览和阅读的节奏，当我需要的时候，甚至可以直接在Reader 里面搜索特定的内容，即使我关掉浏览器、断开网络，它还是会在云端不断地管理和更新数据。这个性化的互联网阅读简直让我获取信息的能力得到了阶段性的提升。</p><p>个性化阅读的是容易上瘾的。每天打开Reader 所看到海量更新闻居然都是自我所喜欢和关注的，刚用Reader 的那段时间，似乎是患上了强迫症，一定要把所有的条目都看完才肯罢休，我可不是个例，被我介绍入了Reader 伙的那哥们也很长时间跟我一样，一定要看完所有更新了的条目才能安心的关掉Reader。</p><p>一开始只是单纯的上瘾，Reader 成了每天必修的功课，直到后来，每次打开Reader 看到更新条目超过500甚至是1000+的时候，才深深的体会到什么是《攻壳机动队》里描绘的那个「信息网路高速且发达的世界」。人们发明了聚合信息的方法，然后却发现聚合的网路已经远远超过了人脑所能处理器的能力。在我的书签里，“1000+”已经替代了Reader 这个名字。</p><p>我一直想推荐更多的朋友使用Reader，后来发现并不是所有人都如此的热衷互联网，那些“更爱书本杂志”的人，网络只能算是他们必须时的工具或者无聊时的打法。然后社交网络很理所当然地把后一部份人给拉拢过去了，点一点偷几个菜，或者无聊了做几个表情，自拍一下发上网络去给同样无聊的人看，然后再互相like 一下，很快无聊的时间就通过互联网打发过去了。</p><p>有人说Google 最好的社交产品团队在做Reader，而Reader 也确实拥有许多铁杆粉丝，但始终不能像真正的社交网络那样聚人气。当社交网络的浪潮袭来，Google 最终还是没能顶住诱惑，要弃掉Reader 而集全力于Google+。我感觉Google 其实是逼迫Reader 的那些顽固用户都转向G+，这是不作恶吗？还是不要过度崇拜某一个企业为好。</p><p>几个月前，当Reader 告诉我Reader 要关闭的时候，我甚是愤怒，现在确感觉可以释然了。天下无不散之筵席，只要互联网的在发展，每隔不了多长时间就会有新的模式、新的应用出来改变一切。</p><p>当互联网还是三块钱一个小时的特殊体验时，Reader 的出现是非常让人眼前一亮的，在那之前从来没有哪个工具能如此提高互联网信息的获取效率。现在，无论走到城市的哪一处，无论是什么时候，无论是在坐公交车，还是在等待午餐上桌，只要我想，随时拿出手机打开一个浏览器或者一个应用，就足以让我无拘无束的享受互联网。任何新闻我们都能从社交网络上第一时间知道，当天发生的新闻，当天就可以随便找个碎片时间来慢慢阅读详细的报道，整个世界都被互联网联系起来了。</p><p>就算没有了Reader ，互联网的阅读还是会继续发展下去。现在，我的互联网世界不再仅仅是Reader 那严肃的网格世界。有自作聪明无觅，每天算计着我会喜欢什么样的内容，然后一股脑像瀑布一样丢给我（现在很多阅读站都流行瀑布流），这样我连纠结需要订阅哪些频道都省了。还有那个精美的Flipboard，一张张大图翻过去亮瞎我的双眼，却浑然不知流量在燃烧。</p><p>我真的不必担心Reader 会离去。它会像是个最亲密而不得不离去的朋友，会永远在我的心里，而我，还会结交到更多的朋友。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;img src=&quot;/2013/05/03/goodbye-google-reader/remember-reader.png&quot; class=&quot;&quot; title=&quot;remember-reader&quot;&gt;
+
+&lt;p&gt;已经不记得我是先用上Twitter 还是Google Reader，更不记
+      
+    
+    </summary>
+    
+    
+    
+      <category term="RSS" scheme="https://atlassc.net/tags/RSS/"/>
+    
+      <category term="Google reader" scheme="https://atlassc.net/tags/Google-reader/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>攻壳机动队的进化预言</title>
+    <link href="https://atlassc.net/2010/10/22/ghost-in-the-shell-20-revolution/"/>
+    <id>https://atlassc.net/2010/10/22/ghost-in-the-shell-20-revolution/</id>
+    <published>2010-10-21T16:50:16.000Z</published>
+    <updated>2018-12-30T06:45:42.812Z</updated>
+    
+    <content type="html"><![CDATA[<img src="/2010/10/22/ghost-in-the-shell-20-revolution/gits2point0.jpg" class=""><p>《攻壳机动队》是一部在视觉、听觉和思想上给人们带来了许多震撼的伟大科幻动画电影。《攻壳机动队2.0》，它不是一次复刻，它也不是一次重新剪辑，它是2.0，它是一次进化 。藉由现代先锋动画电影制作技术，将这部受限于赛璐璐时代技术的里程碑式科幻作品进行改造，使其伟大的想象力能够在13年以后得以解放。</p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pS8Nlbyc33wsViIXLl5YIAtKYxReBEEt1T7uwYcBKxkoFlF5IKmbIxdsLWfDwTPk_F0cwezmjZ9VPVbYns5iq7EJLxuiQBNrS/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101021-2353320%5D.jpg" alt="“ 公元2029年，人们喜欢机器。”"></p><blockquote><p>素子：这真是方便呢。只要自己高兴就可以用装在体内的化学反应器，在十秒内将血液中的酒精分解，恢复清醒。既然有办法做到这点，接着就会想去实现其它的任何技术。这就像是人类的本能，控制代谢，加强知觉敏捷度，运动与反射能力的大幅提升，加速括大信息处理能力，藉由电子脑与义体获得高度能力之后，就算落到 没有得到最佳保养就无法生存的地步，也没有立场抱怨？</p></blockquote><p>电影中的公元2029年，是一个人性被信息淹没的时代。人们藉由赛伯（cyborg）义体技术将自己的身体进行改造，使之更高、更快、更强，并且最重要的是能更高效率地处理高度发达的未来人类社会中必需的海量信息。而在一次又一次的替换掉自己身上“原版”的零件以后，人们有的开始忘却自己的存在， 有的开始怀疑自己的存在。在一切信息数字化的时代，信息根本无法相信、或者根本没必要相信。必要的只是接收信息，然后执行信息的指命。</p><p>所以，忘却自我存在的人们，早已经不再关心自己的灵魂（GHOST）在想什么、想要什么，对于他们来说，生命的意义就是处理更多的信息、完成更多的 任务，他们更换的赛伯格身体不必休息、不必睡觉，七情六欲全转数字信息，在时间不充足的时候，这些“不必要”的信息基本可以省去不要。可以设想一下，如果 吃牛排根本没办法为你的赛伯格身体补充任何能量并使之继续工作下去，那么牛排的存在对于一个绝对理性的人来说就是不必要的。在信息的巨浪中，通常这种不必要的信息将被抛弃。</p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pjWxEfyfbfKtzg4jJ8GDoZdcnnU-H8aV_pBQCeBtl3-gxmVYCPDWPpb0YQpA42i5LTt0laXEv-bCuDWtajLP2eLBtjY6TT3kk/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101021-2354151%5D.jpg" alt=""></p><p>当然还是会有像《黑客帝国》中的叛徒那样的人存在，就算知道自己吃上的不是一块牛排，而只是代码告诉自己吃进口里的是多汁而美味的牛排，他们仍然乐意于选择这样一块“牛排”，而不是“机油”（当然他们也根本无法从中做出选择）。就像出生在网络时代之前的人们需要刻意地去学习上网，而出生在网络时代中的人可以很自然地将网络当作自己生活的一部分一样，那些留恋于“多汁美味牛排”的人们，更多的只是因为自己的不习惯。这些习惯和回忆确实在有些时候能告诉我们自己到底想要什么，于是，当这些仍然知道自己想要什么的人开始陷入迷茫的时候，当他们开始不再相信那些数字信息的时候，他们同时也会开始怀疑起自己的 存在。</p><p>开始怀疑自我存在的人们思考着到底什么才是自我存在的证明：是自己的肉体身躯，还是感觉上不那么真实的自我意识？若是只有自己的肉体躯壳才能证明自己是作为生命体的存在，那如今一块一块地将自己的身体换去，是不是就等于自己早已死去了呢？虽然赛伯格技术只能改造而不能替换大脑，但人们也不可能看到自 己的大脑，就算看到，又怎能确保赛伯格眼睛告诉自己的一切都是真相？若自我意识才是自我存在的证明，那我又怎能知道自己的这些想法、这些意识中决择不是已经被编好的程序呢？也许根本就不是我们自己想吃一块牛排，而是程序规定我们得想吃。</p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pBL7Ly8E3s_7hAdK45obWtE3gMo9SQLkWUdNTuUy_R_UMmKgLAOv1q7f8XjxsKhWZxujBDXLoExiLESBVdosI56Jv1vPnzp36/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101021-2355062%5D.jpg" alt=""></p><blockquote><p>素子：就像人类要成为人需要相当多的零件，为了让自己成为自己需要的东西也多得吓人，用来与他人做区隔的脸、和脸不会冲突的声音、起床时凝视的手掌、小时候的记忆、对未来的预感，不光只是这些，还有我的电子脑可以存取到的庞大信息以及广大的网络，这些都是我的一部份，孕育出称为“我”的这个意识，同时也将 我限制在某个范围中。</p></blockquote><p>人类的意识是个神奇的东西。《钢炼》一直坚持人死不能复生，因为我们无法炼成灵魂，它是不能被等价交换的。意识是独一无二的，当然这不仅限于人类。《黑客帝国》中提到“设计师”是为了研究人类的意识而建造了数代“矩阵帝国”，并试图以完美的数学来解读、解构人类的意识。当然最后他失败了，那是因为构成他意识是完美的数学等号和公式，而人类意识的美妙之处就在于那求不尽的余数。《黑客帝国》的这一点最核心思想的灵感肯定就是来自于《攻壳机动队》中的 “Project 2501（傀儡师）”。</p><p>人类创造了能使自己思维得到延伸的信息网络，而广阔无垠的网络中却有自称为生命体的“Project 2501（傀儡师）”开始意识到自己的存在。“傀儡师”自称诞生于信息的海洋中，以信息为存在形式并且是与人类（或者说是未进行赛伯格改造的人类）、 DNA细胞生物不相同的生命形式。</p><p><img src="http://hhjpaa.blu.livefilestore.com/y1ptmBpF6cPDGi1vOGCrro6BH86R-WbWAvmcWAH4gbREToKI9HX_fKD0A24X7tzOK-EySkOGZzmZdNGowLaRV5jAAr66DwEa9av/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101021-2356363%5D.jpg" alt="“ 我是诞生于信息海养中的生命体。”"></p><blockquote><p>傀儡师：你们的DNA同样也只是为了追求自我生存的程序，所谓生命就好比于出现于信息洪流中的节点，物种的生命拥有称为基因的记忆系统，人类是借着记忆才有所谓个人的存在，就算记忆跟虚幻同义，人类仍然是仰赖记忆而生存的生物。因为记算机的普及使记忆得以储存于外部的那时起，你们就应该更认真地思考生命的 意义才对。毕竟连现代科学都还无法对行命下定义。</p></blockquote><p>“傀儡师”还声称自己不是人工智能，自己是有意识的存在，而不是被人们所编写的人工智能程序。以电影的观点也确实如此，就算人工智能的“智能”程度 再高，就算究极像足了人类意识，它也不过只是编写好的程序，它的一切所谓想法、意识都是出于编写者的安排，而不是自身的想法。它没有GHOST。</p><p>在作品中，我们无需争论“傀儡师”存在的合理性，“傀儡师”的存在是电影想象力的重要组成部分。“就算是现代科学也无法解释什么是生命。”于是我们 可以知道，作品其实是在哲学上探讨和定义什么是生命的真谛。我们的存在到底是因为我们独一无二的肉体，还是因为我们独一无二的意识？如果技术能够实现，那么我们是不是就能脱离躯壳（SHELL）的束缚，让自己的意识能在信息的世界里无限制地遨游，并将自己的视野延伸到信息世界的尽头？</p><p>《攻壳机动队》一直在反复地讨论着灵魂与躯体，电影大胆地想象着人们的灵魂可以脱离躯体而存在，可以被科学技术量化，而我们的躯体只是灵魂赖以存活的载体而已。在《攻壳机动队：无罪》更是直接地讲述着灵魂被抽取和复制的故事，电影中那条重要的线索就是这一句无处不在的“生死去来，棚头傀儡，一线断时，落落磊磊。”（出自世阿弥的能乐书《花镜》，原意是为了解说生死。其中“傀儡”便是躯体（SHELL），一旦操纵其的灵魂（GHOST）被切断，人就 只剩下空空一副躯壳，动弹不得也没有用处了 。）《攻壳机动队》中充满着日本人的傀儡情结，电影把人比喻成受灵魂操控的傀儡，我们的躯体承载着我们的灵魂，同时也束缚着我们的灵魂。</p><blockquote><p>傀儡师：人本来就会不断改变，想维持着“现在的自己”的这种想法不断的限制着你。我与包含我自己在内的庞大网络相连接着，对于未与此连结的你来说，或许会只感觉到那是一团光芒，那是我们全部的集合体，并且将我们容纳为一部份。虽然我们只是隶属于它一小份的机能，不过现在正是舍弃限制。</p></blockquote><p><img src="http://hhjpaa.blu.livefilestore.com/y1pTetOEdU3QpX7akZ9Y5ScT2xpVzKfADve6X4N_SUNKJpXAye1gllhLOX42jEcsR0ZJebZjUVnQJbUYP2A2vMvJWAU1k2FWrQG/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101021-2357535%5D.jpg" alt="“ 生死去来，棚头傀儡，一线断时，落落磊磊。”"></p><p>电影花了不少镜头来了来展现素子美丽丰盈的胴体，那正是对素子的躯体，而在那场与多脚战车对战的最后，她的胴体却因为无法满足自己灵魂的强烈愿望而被自己的意识冲破，支离破碎、散落倒地，那一刻，素子正像是一个断线的傀儡，无助并且绝望。于是素子最终接受了“傀儡师”的请求，与之融合，抛弃了自己这 副无法满足自己意愿、无法让自己信任的并且不断限制着自己灵魂的躯体，成为了一个能自由穿梭于信息海洋中的新型生命体。</p><p>是于从作品的观点来看，自我的意识、灵魂、GHOST是才是真正自我存在的意义，而躯体（SHELL）只不过是载体，于是一点便把人类和“傀儡师”的存在相提并论起来。</p><blockquote><p>在不久的将来，无论电脑网络如何的先进，政治分裂和人类的差异仍然存在，尽管企业网络覆盖全球，光与电子尽情奔驰。<br>“ 近未来的资讯化程度，却仍未使国家与民族彻底消失。”</p></blockquote><p>公元2029年，日本并没实现东南亚共荣，日本本土已经沉没了也说不定，电影里的那个国度应该更像是亚洲的欧盟。这样的共同经济体应该是人类走向共同繁荣的理想形式，至少从现在世界的格局来看是这样的，这是人类文民的进化 。虽然多种文化的交流可以走向融合，但除非实行文化灭绝制度，要在短时间内将多民族、文化和国家统一是不可能的，人类要发展，最为可行的方案仍然是合作。</p><p>《攻壳机动队》从一开始就把这个世界设定告诉我们了——普通话、日语和英语三种语言同时出现（或许是因为本片主要观众为日本本国人，所以主角们的对 白都是日语，而路人甲乙讲的是普通话）。影片里随处可见显眼的中文汉字，可以确定这里是中国南方的某个城市。城市的居民各自为不同的人种出现，讲着不同的语言，却能共同生活在这同一个城市里面。即使各大政治、经济势力仍在为自己的利益而彼此斗争，但至少我们可以看见这些有着区别和界限的民族与文化都互相敞 开着大门，相互合作，相互赖以生存。</p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pUyp534y6R4QA6C_4dfRRG2UqooBGFz6_vMjO2-Kjlizk0u-Sruho_K2MNUp5hKCXvutKgNeDZ56aev3SqqD4bVSUtEvjK426/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0000296%5D.jpg" alt=""></p><p>日本的科幻作品中总喜欢从哲学的角度上讨论共性与个性，国家、民族之间是如此，人与人之间也是如此。在《EVA》的世界中，人类之所以彼此区别，是 因为人们都各自有着自己的绝对领域（AT力场）将自己与别人区别开来，以维持自己的形态和意识。一旦完全突破这绝对领域，自我的存在将马上消失。</p><p>当然，有不少科幻作品也表示，当生命之间相融合，消除个体，达成共同意识，并不代表生命的结束，而是两者将以另外一个统一意识的生命体存在。《星际争霸》中的异虫就是这样一种统一意识的生命体，以不断的吞噬其它物种来发展和进化 自己。王晋康先生的长篇小说《类人》有一个章节在描述蜜蜂世界的统一意念。《高达00》在TV结局也丢出了类似的思想：人类终于消除纷争，实现统一，向宇宙进发，同时人类的孩童时期也随之结束。</p><p>那么说，如果我们放弃个体的存在，互相合作，成为同一的整体，我们的思为和视野将得到极限的延伸。这样一来是不是就是一种生命形式的<strong>进化</strong>呢？</p><blockquote><p>当我是孩子的时候，言语像孩子，感情像孩子，思考也像孩子。<br>既然长大成人，就应该把孩子的想法丢弃了。<br>“ 这里不再有傀儡师，和那个叫作少校的女子。”<br>傀儡师：对于未与此连接的你来说，或许只会感觉到那只是一团光芒，那是我们全部的集合休，并且将我们纳为一部份，虽然我们只是隶属于它一小份的机能。</p></blockquote><p>于是素子与“傀儡师”融合了（ 西夏 在日志里写道：“《攻壳机动队》可以归入爱情故事一档，只是一点不浪漫：男人寻找女人、只为寻找一个理想的伙伴来延续后代，而素子不过被当作了传宗接代的工具”），于是我的理解是作品在讲述生命的意义和进化 。“所有的生命都将死去，然后抹去所有的记忆，只留下DNA的讯息，以供下一代生命的发展和延续。”</p><p>素子与“傀儡师”的融合其实是繁衍和进化 。那个叫作素子的女子与傀儡师都已不复存在，他们各自抛弃了自己，融合成了一个以信息为形式的、突破了躯体限制的、视野得到无限延伸的并且与宽广信息网络融为一体的“超意识”生命体。</p><p>以当今人类文明科学技术的发展来看，似乎“将灵魂数字信息化”是对人类进化 的一个非常合理的设想。自从进入电子信息时代，人类文明的信息量和信息处理能力实现了大暴发。一旦可以接入网络，全球信息尽在手中掌握。哪怕是出门在外，只要手持一部手机，就可以GPS定位、收发电邮、bing周边、google全球资讯，这是一百年前人们连想都不敢想的。如果人类可以冲破肉体的束缚，让 我们的灵魂数字信息化，那么不仅人类这类生命体的信息处理能力将得到质的飞越，甚至人类作为生命体的存在形式都会要发生改变。</p><p>这个对人类进化 的大胆构想，便是整个作品给我们带来的最大的惊喜和最高的升华。押井守为我们带来了《攻壳机动队2.0》</p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pnS8QieyeYN-IyAcQbK4hC1WkJtWA5v1jx4_vDWXyBK7xXnk3g9Wekq4fn7QYfQmRzfE9ZFERf1XMab1IH397U_c1uzo5915r/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0002047%5D.jpg" alt=""></p><p><img src="http://hhjpaa.blu.livefilestore.com/y1p6XP_1GuyW1Kozf4RFQh22L8K61dWIIpZWxJOpZkSTyJ3wOzyCfLKFE35qGkS0-dtv9xkVQ2cWPRyZqsTdw5DjhE1tnP5VUyr/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0002339%5D.jpg?psid=1" alt="“ 那么，我该去哪里好呢？网络是很广大的。”"></p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pBjMtvA5f4rwrI0n8bbkUZ991wiQbjoPqLNhakO2EipiAoqXIR1fAK-VQ21VOy-DQ4PpjVbt5os2MPHpid4BS2by1D1W5iWW-/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0032431%5D.jpg" alt=""></p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pZRHFRBy9VGlYwmUPmIiiUJZFSwdr7Szqfs5f4jxNV-J-iXPoqvcL3rW463q5PgdG9dWw4aprvJYFSfdAcrbvaFamw6WPM1iP/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0032512%5D.jpg" alt=""></p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pKR1OYqJDYmInPqKLoq4ycijmgf3pvMBV7dEw5Nj0_cDre1jXjdYx3C30ON_J12OWvd6Lo6ajzXtfQkH-DteMs7YgY1Z-K2Bz/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0032563%5D.jpg" alt=""></p><p><img src="http://hhjpaa.blu.livefilestore.com/y1pFIWOaL0NH7ZL-eA4WUPqm0IksGFqCOdW8N-33L9YQj8pqu7IKC2RmfrkNOE7u_WQ6nMOEhtnRD_8lo1Ei5rkccojDgQSwMgi/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0033145%5D.jpg" alt=""></p><p><img src="http://public.blu.livefilestore.com/y1palnIoCRc8dI0dFUfPZAdcpVoLxo5ALK12eEa7wTCsLkDTl14tZNz3crcp3gSLgzourRnOIPDtyAkjCzUTpKy9Q/GHOST%20IN%20THE%20SHELL%202.0%20-%20012.jpg" alt=""></p><p><img src="http://hhjpaa.blu.livefilestore.com/y1p-qfJiZrlBSlzD3XRiTz8T8Zss9Hrzg14jD4-6i4pLIdtT3ip9xoYdcaGxUhvJQwqShsnVBbSQLThOkL5L5F920iQcY-pCbze/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0030280%5D.jpg" alt=""></p><p><img src="http://public.blu.livefilestore.com/y1pmMVjtoweIaHhggYAhI5AMj60PGwWmBiZN8TKpS5wdEHxdLMwbAkLFSMgdhw0Q_k6XQtv-RmFSF9YlzgYQIXIUw/%5B%E6%94%BB%E5%A3%B3%E6%9C%BA%E5%8A%A8%E9%98%9F2.0%5D.Ghos%5B20101022-0032010%5D.jpg" alt=""></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;img src=&quot;/2010/10/22/ghost-in-the-shell-20-revolution/gits2point0.jpg&quot; class=&quot;&quot;&gt;
+
+&lt;p&gt;《攻壳机动队》是一部在视觉、听觉和思想上给人们带来了许多震撼的伟大科幻动画电影。《攻壳机动队2.0》，它不是
+      
+    
+    </summary>
+    
+    
+    
+      <category term="GHOST IN THE SHELL" scheme="https://atlassc.net/tags/GHOST-IN-THE-SHELL/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>ShinChven</title>
+    <link href="https://atlassc.net/2007/10/26/ShinChven/"/>
+    <id>https://atlassc.net/2007/10/26/ShinChven/</id>
+    <published>2007-10-26T13:52:46.000Z</published>
+    <updated>2019-10-08T14:36:49.722Z</updated>
+    
+    <content type="html"><![CDATA[<p><code>ShinChven</code> is the unique name I created for myself to use online, it shares a similar pronunciation with my original non-English name, and it shall be pronounced as /ʃɪnʧvɛn/.</p><p>I’ve been a great fan of English, it’s been a fashion for English learners to have their English names, but I don’t wanna just be as another James or Bill. So I created this one out of my original name according to my understanding of English pronunciation.</p><p>I like it to be unique and sounds familiar to my original name, and I hope it shall serves me well as a recognizable alias so that I don’t have to worry about being recognized as another person using a same name. But if I do anything wrong under this alias, I got nowhere to hide. So a true person you shall see, good or bad, if you search my alias online.</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;code&gt;ShinChven&lt;/code&gt; is the unique name I created for myself to use online, it shares a similar pronunciation with my original non-Engl
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>Hello World</title>
+    <link href="https://atlassc.net/2000/01/01/hello-world/"/>
+    <id>https://atlassc.net/2000/01/01/hello-world/</id>
+    <published>1999-12-31T16:00:00.000Z</published>
+    <updated>2019-09-18T13:14:00.981Z</updated>
+    
+    <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;Welcome to &lt;a href=&quot;https://hexo.io/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Hexo&lt;/a&gt;! This is your very first post. Check &lt;a href=&quot;https://hexo.
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+</feed>
